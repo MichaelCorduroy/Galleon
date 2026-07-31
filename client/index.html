@@ -7,7 +7,22 @@
     <title>client</title>
   </head>
   <body>
+	  <h1>Galleon</h1>
+	  <div id="songs"></div>
+
+	  <script>
+		  fetch("http://localhost:3000/songs")
+			  .then(r => r.json())
+			  .then(songs => {
+				  document.getElementById("songs").innerHTML = 
+					  songs.map(song => `
+						  <div>
+						  ${song.title} - ${song.artist}
+						  <audio controls src="http://localhost:3000/stream/${song.id}"></audio>
+						  </div>
+					  `).join("");
+			  });
+	  </script>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
