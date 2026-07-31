@@ -1,3 +1,13 @@
 # Ignore personal music library
 music/*
 !music/.gitkeep
+
+# Database
+*.db
+*.sqlite
+
+# Dependencies
+node_modules
+
+# Env variables
+.env
