@@ -170,12 +170,44 @@ export function ChevronLeftIcon({ size = 16 }: IconProps) {
 	);
 }
 
+export function ChevronRightIcon({ size = 16 }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+			<path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+		</svg>
+	);
+}
+
 export function DownloadIcon({ size = 16 }: IconProps) {
 	return (
 		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
 			<path d="M8 2v8" strokeLinecap="round" />
 			<path d="M4.5 6.5L8 10l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
 			<path d="M2.5 13h11" strokeLinecap="round" />
+		</svg>
+	);
+}
+
+export function HistoryIcon({ size = 16 }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+			<circle cx="8" cy="8.5" r="5.5" />
+			<path d="M8 5.5V8.5l2.5 1.5" strokeLinecap="round" strokeLinejoin="round" />
+			<path d="M4.5 1.5L2.5 3.3" strokeLinecap="round" />
+			<path d="M11.5 1.5l2 1.8" strokeLinecap="round" />
+		</svg>
+	);
+}
+
+export function HeartIcon({ size = 16, filled = false }: IconProps & { filled?: boolean }) {
+	const d = "M8 13.5S2.5 10.14 2.5 6.41A3.16 3.16 0 0 1 5.66 3.2 3.2 3.2 0 0 1 8 4.4a3.2 3.2 0 0 1 2.34-1.2 3.16 3.16 0 0 1 3.16 3.21C13.5 10.14 8 13.5 8 13.5z";
+	return filled ? (
+		<svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
+			<path d={d} />
+		</svg>
+	) : (
+		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+			<path d={d} strokeLinejoin="round" />
 		</svg>
 	);
 }

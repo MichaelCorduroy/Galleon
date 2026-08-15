@@ -30,7 +30,7 @@ export function ArtistView({ artist, albums, onBack, onOpenAlbum, onSearchArtist
 		<div className="content-view">
 			<button className="text-btn back-link" onClick={onBack}>
 				<ChevronLeftIcon size={13} />
-				Library
+				Back
 			</button>
 
 			<div className="view-title">{artist}</div>

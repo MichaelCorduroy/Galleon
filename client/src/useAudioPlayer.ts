@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Song, streamUrl } from "./api";
+import { logPlay, type Song, streamUrl } from "./api";
 import { loadState, saveState } from "./storage";
 
 const FFT_SIZE = 64;
 const RESTART_THRESHOLD = 3; // seconds — prev() restarts the track instead of going back if past this
 const HISTORY_LIMIT = 50;
 const TIME_SAVE_INTERVAL = 3; // seconds — throttle how often playback position is persisted
+
+// mirrors Last.fm's classic scrobble rule: a track only "counts" as a listen
+// once at least half of it (capped at 4 minutes) has actually played, and
+// it must be longer than 30s to begin with — short enough to skip through
+// doesn't get logged
+const MIN_LOGGABLE_DURATION = 30;
+const MAX_LISTEN_THRESHOLD = 240;
+const SEEK_JUMP_GUARD = 2; // seconds — timeupdate deltas bigger than this are a seek, not real playback
 
 export type RepeatMode = "off" | "all" | "one";
 
@@ -39,6 +47,18 @@ export function useAudioPlayer() {
 	const currentSongRef = useRef(currentSong);
 	const pendingResumeTimeRef = useRef<number | null>(loadState<number | null>("resumeTime", null));
 	const lastTimeSaveRef = useRef(0);
+
+	// tracks accumulated real playback time for the current track-play, to
+	// decide when it's crossed the "genuine listen" threshold — reset
+	// whenever a track starts fresh (new song, restart, or repeat-one loop)
+	const playedAccumRef = useRef(0);
+	const lastPlayTickRef = useRef(0);
+	const loggedRef = useRef(false);
+	const resetPlayTracking = () => {
+		playedAccumRef.current = 0;
+		lastPlayTickRef.current = 0;
+		loggedRef.current = false;
+	};
 
 	useEffect(() => {
 		queueRef.current = queue;
@@ -75,6 +95,7 @@ export function useAudioPlayer() {
 
 	const setCurrentSong = useCallback((song: Song | undefined) => {
 		setCurrentSongState(song);
+		resetPlayTracking();
 		const audio = audioRef.current;
 		if (!audio || !song) return;
 		audio.src = streamUrl(song.id);
@@ -96,6 +117,7 @@ export function useAudioPlayer() {
 				const audio = audioRef.current;
 				if (audio) {
 					audio.currentTime = 0;
+					resetPlayTracking();
 					audio.play().catch(() => {});
 				}
 				return;
@@ -143,10 +165,26 @@ export function useAudioPlayer() {
 		}
 
 		const onTimeUpdate = () => {
-			setCurrentTime(audio.currentTime);
-			if (audio.currentTime - lastTimeSaveRef.current >= TIME_SAVE_INTERVAL) {
-				lastTimeSaveRef.current = audio.currentTime;
-				saveState("resumeTime", audio.currentTime);
+			const t = audio.currentTime;
+			setCurrentTime(t);
+			if (t - lastTimeSaveRef.current >= TIME_SAVE_INTERVAL) {
+				lastTimeSaveRef.current = t;
+				saveState("resumeTime", t);
+			}
+
+			// only count forward progress that looks like real playback, not
+			// a seek jump, so scrubbing through a track can't fake a listen
+			const delta = t - lastPlayTickRef.current;
+			lastPlayTickRef.current = t;
+			if (delta > 0 && delta < SEEK_JUMP_GUARD) playedAccumRef.current += delta;
+
+			if (!loggedRef.current && audio.duration > MIN_LOGGABLE_DURATION) {
+				const threshold = Math.min(audio.duration / 2, MAX_LISTEN_THRESHOLD);
+				if (playedAccumRef.current >= threshold) {
+					loggedRef.current = true;
+					const song = currentSongRef.current;
+					if (song) logPlay(song.id, playedAccumRef.current);
+				}
 			}
 		};
 		const onLoadedMetadata = () => {
@@ -247,6 +285,7 @@ export function useAudioPlayer() {
 		const audio = audioRef.current;
 		if (audio && audio.currentTime > RESTART_THRESHOLD) {
 			audio.currentTime = 0;
+			resetPlayTracking();
 			return;
 		}
 		setHistory((h) => {

@@ -3,6 +3,7 @@ import type { Album, TracklistTrack } from "../api";
 import { coverUrl, downloadKey } from "../api";
 import { CoverArt } from "./CoverArt";
 import { DownloadButton } from "./DownloadButton";
+import { LikeButton } from "./LikeButton";
 import { ChevronLeftIcon, PlayIcon, PlusIcon } from "../icons";
 import { SONG_DRAG_MIME } from "../dnd";
 import { formatDuration, formatTime } from "../format";
@@ -19,6 +20,8 @@ interface AlbumViewProps {
 	onOpenArtist: (artist: string) => void;
 	downloadingKeys: Set<string>;
 	onDownload: (artist: string, album: string, title: string) => void;
+	likedIds: Set<number>;
+	onToggleLike: (songId: number) => void;
 }
 
 export function AlbumView({
@@ -33,6 +36,8 @@ export function AlbumView({
 	onOpenArtist,
 	downloadingKeys,
 	onDownload,
+	likedIds,
+	onToggleLike,
 }: AlbumViewProps) {
 	const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
 	const ownedCount = tracks.filter((t) => t.owned).length;
@@ -56,7 +61,7 @@ export function AlbumView({
 		<div className="content-view">
 			<button className="text-btn back-link" onClick={onBack}>
 				<ChevronLeftIcon size={13} />
-				Library
+				Back
 			</button>
 
 			<div className="view-header">
@@ -117,14 +122,21 @@ export function AlbumView({
 							)}
 							<span className="track-duration">{formatTime(track.duration ?? 0)}</span>
 							{track.owned && track.songId ? (
-								<button
-									className="icon-btn track-add-btn"
-									onClick={() => onAddToQueue(track.songId!)}
-									aria-label="Add to queue"
-									title="Add to queue"
-								>
-									<PlusIcon size={13} />
-								</button>
+								<>
+									<LikeButton
+										liked={likedIds.has(track.songId)}
+										onToggle={() => onToggleLike(track.songId!)}
+										small
+									/>
+									<button
+										className="icon-btn track-add-btn"
+										onClick={() => onAddToQueue(track.songId!)}
+										aria-label="Add to queue"
+										title="Add to queue"
+									>
+										<PlusIcon size={13} />
+									</button>
+								</>
 							) : (
 								<DownloadButton
 									title={`Download "${track.title}"`}

@@ -79,10 +79,19 @@ export async function scanDirectory(directory: string){
 
 				try {
 					const metadata = await parseFile(fullPath);
-					const artist = metadata.common.artist ?? "Unknown Artist";
-					const album = metadata.common.album ?? "Unknown Album";
+					// fall back to the enclosing "Artist - Album" folder (the
+					// convention every download and manually-organized file
+					// uses) before giving up and calling it Unknown — covers
+					// files whose ID3 tags are missing/incomplete
+					const folderName = path.basename(path.dirname(fullPath));
+					const sepIndex = folderName.indexOf(" - ");
+					const folderArtist = sepIndex !== -1 ? folderName.slice(0, sepIndex).trim() : null;
+					const folderAlbum = sepIndex !== -1 ? folderName.slice(sepIndex + 3).trim() : null;
+
+					const artist = metadata.common.artist ?? folderArtist ?? "Unknown Artist";
+					const album = metadata.common.album ?? folderAlbum ?? "Unknown Album";
 					const song: ScannedSong = ({
-						title: metadata.common.title ?? file.name,
+						title: metadata.common.title ?? path.basename(file.name, path.extname(file.name)),
 						artist,
 						album,
 						path: fullPath,

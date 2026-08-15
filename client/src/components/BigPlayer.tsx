@@ -15,6 +15,7 @@ import {
 	VolumeIcon,
 } from "../icons";
 import { CoverArt } from "./CoverArt";
+import { LikeButton } from "./LikeButton";
 import { Visualizer } from "./Visualizer";
 import { formatTime } from "../format";
 
@@ -27,6 +28,8 @@ interface BigPlayerProps {
 	shuffle: boolean;
 	repeatMode: RepeatMode;
 	showQueue: boolean;
+	liked: boolean;
+	onToggleLike: () => void;
 	onTogglePlay: () => void;
 	onNext: () => void;
 	onPrev: () => void;
@@ -35,6 +38,7 @@ interface BigPlayerProps {
 	onToggleShuffle: () => void;
 	onCycleRepeat: () => void;
 	onToggleQueue: () => void;
+	onOpenAlbum: () => void;
 	onOpenArtist: (artist: string) => void;
 	onOpenNowPlaying: () => void;
 	onEnableVisualizer: () => void;
@@ -51,6 +55,8 @@ export function BigPlayer({
 	shuffle,
 	repeatMode,
 	showQueue,
+	liked,
+	onToggleLike,
 	onTogglePlay,
 	onNext,
 	onPrev,
@@ -59,6 +65,7 @@ export function BigPlayer({
 	onToggleShuffle,
 	onCycleRepeat,
 	onToggleQueue,
+	onOpenAlbum,
 	onOpenArtist,
 	onOpenNowPlaying,
 	onEnableVisualizer,
@@ -84,7 +91,16 @@ export function BigPlayer({
 			</button>
 
 			<div className="big-player-info">
-				<div className="big-player-title">{currentSong ? currentSong.title : "Nothing playing"}</div>
+				<div className="big-player-title-row">
+					{currentSong ? (
+						<button className="big-player-title big-player-title-link" onClick={onOpenAlbum}>
+							{currentSong.title}
+						</button>
+					) : (
+						<div className="big-player-title">Nothing playing</div>
+					)}
+					{currentSong && <LikeButton liked={liked} onToggle={onToggleLike} small />}
+				</div>
 				{currentSong ? (
 					<button className="link-btn big-player-artist" onClick={() => onOpenArtist(currentSong.artist)}>
 						{currentSong.artist}

@@ -142,6 +142,12 @@ export async function downloadTrack(
 			"--embed-thumbnail",
 			"--add-metadata",
 			"--no-overwrites",
+			// newer yt-dlp needs the actual JS challenge-solver script fetched
+			// separately from the JS runtime itself (deno) — without this,
+			// YouTube's "n"/signature challenges fail and only thumbnail
+			// "formats" are left, so extraction errors out
+			"--remote-components",
+			"ejs:github",
 			"--sleep-requests",
 			"2",
 			"-o",

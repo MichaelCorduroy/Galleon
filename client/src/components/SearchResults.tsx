@@ -4,6 +4,7 @@ import { coverUrl, downloadKey, searchMissingTracks } from "../api";
 import type { ArtistSummary } from "../artists";
 import { CoverArt } from "./CoverArt";
 import { DownloadButton } from "./DownloadButton";
+import { LikeButton } from "./LikeButton";
 import { PlusIcon } from "../icons";
 import { formatTime } from "../format";
 
@@ -19,6 +20,8 @@ interface SearchResultsProps {
 	onOpenArtist: (artist: string) => void;
 	downloadingKeys: Set<string>;
 	onDownload: (artist: string, album: string, title: string) => void;
+	likedIds: Set<number>;
+	onToggleLike: (songId: number) => void;
 }
 
 export function SearchResults({
@@ -33,6 +36,8 @@ export function SearchResults({
 	onOpenArtist,
 	downloadingKeys,
 	onDownload,
+	likedIds,
+	onToggleLike,
 }: SearchResultsProps) {
 	const q = query.trim().toLowerCase();
 
@@ -129,17 +134,28 @@ export function SearchResults({
 					<div className="tracklist-rows">
 						{matchingSongs.map((song, i) => (
 							<div key={song.id} className="track-row">
-								<CoverArt
-									src={coverUrl(song.cover)}
-									alt={`${song.album} cover`}
-									className="cover-art-sm"
-									iconSize={14}
-								/>
-								<button className="track-row-main" onClick={() => onPlaySong(matchingSongs, i)}>
-									<span className="track-title">{song.title}</span>
-									<span className="track-artist">{song.artist}</span>
+								<button
+									className="track-row-cover"
+									onClick={() => onPlaySong(matchingSongs, i)}
+									aria-label={`Play ${song.title}`}
+								>
+									<CoverArt src={coverUrl(song.cover)} alt={`${song.album} cover`} className="cover-art-sm" iconSize={14} />
 								</button>
+								<div className="track-row-main">
+									<button
+										className="track-title-link"
+										onClick={() =>
+											onOpenAlbum({ album: song.album, artist: song.artist, tracks: 0, cover: song.cover })
+										}
+									>
+										{song.title}
+									</button>
+									<button className="track-artist track-artist-link" onClick={() => onOpenArtist(song.artist)}>
+										{song.artist}
+									</button>
+								</div>
 								<span className="track-duration">{formatTime(song.duration)}</span>
+								<LikeButton liked={likedIds.has(song.id)} onToggle={() => onToggleLike(song.id)} small />
 								<button
 									className="icon-btn track-add-btn"
 									onClick={() => onAddToQueue(song)}

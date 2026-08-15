@@ -112,6 +112,15 @@ body {
 	color: var(--text-dim);
 	margin: 0;
 	flex-shrink: 0;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	font-family: inherit;
+}
+
+.app-title:hover {
+	color: var(--text);
 }
 
 .search-bar {
@@ -323,6 +332,24 @@ body {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
+}
+
+.big-player-title-link,
+.now-playing-title-link,
+.mini-player-title-link {
+	background: none;
+	border: none;
+	padding: 0;
+	font-family: inherit;
+	text-align: left;
+	cursor: pointer;
+	color: inherit;
+}
+
+.big-player-title-link:hover,
+.now-playing-title-link:hover,
+.mini-player-title-link:hover {
+	text-decoration: underline;
 }
 
 .link-btn {
@@ -756,6 +783,48 @@ input[type="range"]:disabled {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.track-row-cover {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	flex-shrink: 0;
+	display: flex;
+	line-height: 0;
+}
+
+.track-title-link {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.track-title-link:hover {
+	text-decoration: underline;
+}
+
+.track-artist-link {
+	background: none;
+	border: none;
+	padding: 0;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.track-artist-link:hover {
+	color: var(--text);
+	text-decoration: underline;
 }
 
 .track-artist {
@@ -1226,6 +1295,447 @@ input[type="range"]:disabled {
 .similar-artist-chip:hover {
 	border-color: var(--accent);
 	color: var(--accent);
+}
+
+/* ---------- header icon buttons (history, etc.) ---------- */
+
+.header-icon-btn {
+	flex-shrink: 0;
+	color: var(--text-dim);
+}
+
+.header-icon-btn:hover {
+	color: var(--text);
+}
+
+/* ---------- listening history ---------- */
+
+.history-stats-row {
+	display: flex;
+	gap: 32px;
+	flex-wrap: wrap;
+}
+
+.history-stats-col {
+	flex: 1;
+	min-width: 220px;
+}
+
+.history-rank-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.history-rank-row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	width: 100%;
+	background: none;
+	border: none;
+	border-radius: 8px;
+	padding: 6px 8px;
+	font: inherit;
+	color: var(--text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.history-rank-row:hover {
+	background: var(--surface-hover);
+}
+
+.history-rank-row-static {
+	cursor: default;
+}
+
+.history-rank-row-static:hover {
+	background: none;
+}
+
+.history-rank-num {
+	flex-shrink: 0;
+	width: 16px;
+	font-size: 12px;
+	color: var(--text-dim);
+	font-variant-numeric: tabular-nums;
+}
+
+.history-rank-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+}
+
+.history-rank-sub {
+	color: var(--text-dim);
+}
+
+.history-rank-count {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-dim);
+	font-variant-numeric: tabular-nums;
+}
+
+.history-row {
+	gap: 12px;
+}
+
+.history-row-duration {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-dim);
+	font-variant-numeric: tabular-nums;
+	width: 76px;
+	text-align: right;
+}
+
+.history-row-time {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-dim);
+	width: 60px;
+	text-align: right;
+}
+
+/* ---------- like button ---------- */
+
+.like-btn {
+	color: var(--text-dim);
+}
+
+.like-btn:hover {
+	color: var(--text);
+}
+
+.like-btn.liked {
+	color: var(--accent);
+}
+
+.big-player-title-row,
+.now-playing-title-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.now-playing-title-row {
+	justify-content: center;
+}
+
+.big-player-title-row .big-player-title {
+	margin-bottom: 0;
+}
+
+/* ---------- explore ---------- */
+
+.explore-hero {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 20px;
+	flex-wrap: wrap;
+	margin-bottom: 28px;
+}
+
+.explore-hero-title {
+	font-size: 26px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	margin-bottom: 4px;
+}
+
+.explore-hero-subtitle {
+	font-size: 13px;
+	color: var(--text-dim);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.shuffle-hero-btn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: var(--accent);
+	color: var(--accent-contrast);
+	border: none;
+	border-radius: 999px;
+	padding: 12px 22px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.shuffle-hero-btn:hover:not(:disabled) {
+	opacity: 0.88;
+}
+
+.shuffle-hero-btn:disabled {
+	background: var(--border);
+	color: var(--text-dim);
+	cursor: default;
+}
+
+.explore-divider {
+	border: none;
+	border-top: 1px solid var(--border);
+	margin: 30px 0;
+}
+
+.crate-section {
+	margin-bottom: 0;
+}
+
+/* single overlapping row you flip/scroll through, like a real record crate —
+   tiles fan in on mount and pop forward on hover */
+.crate-scroll {
+	display: flex;
+	overflow-x: auto;
+	overflow-y: visible;
+	padding: 36px 30px 22px;
+	scrollbar-width: none;
+}
+
+.crate-scroll::-webkit-scrollbar {
+	display: none;
+}
+
+.crate-tile {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	flex-shrink: 0;
+	position: relative;
+	margin-right: -32px;
+	transform: rotate(var(--tilt, 0deg));
+	transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+	animation: crate-fan-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+	animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.crate-tile:last-child {
+	margin-right: 0;
+}
+
+.crate-tile:hover,
+.crate-tile:focus-visible {
+	transform: rotate(0deg) translateY(-18px) scale(1.15);
+	z-index: 5;
+}
+
+@keyframes crate-fan-in {
+	from {
+		opacity: 0;
+		transform: translateX(-30px) rotate(0deg) scale(0.8);
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.cover-art-crate {
+	width: 84px;
+	height: 84px;
+	border-radius: 6px;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.explore-shelf-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.explore-liked-empty {
+	padding: 16px 0;
+	text-align: left;
+}
+
+/* ---------- carousel ---------- */
+
+.carousel {
+	position: relative;
+}
+
+.carousel-track {
+	display: flex;
+	overflow-x: auto;
+	scroll-behavior: smooth;
+	scrollbar-width: none;
+}
+
+.carousel-track::-webkit-scrollbar {
+	display: none;
+}
+
+.carousel-arrow {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 3;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+	transition: opacity 0.15s ease;
+}
+
+.carousel-arrow:hover {
+	background: var(--surface-hover);
+}
+
+.carousel-arrow-left {
+	left: 0;
+}
+
+.carousel-arrow-right {
+	right: 0;
+}
+
+.carousel-arrow-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.shelf-row {
+	gap: 16px;
+	padding: 4px 34px 10px;
+}
+
+.shelf-tile {
+	flex-shrink: 0;
+	width: 128px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.shelf-tile-art {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	width: 100%;
+}
+
+.cover-art-shelf {
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 8px;
+	transition: transform 0.15s ease;
+}
+
+.shelf-tile-art:hover .cover-art-shelf {
+	transform: scale(1.04);
+}
+
+.shelf-tile-info {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.shelf-tile-title {
+	background: none;
+	border: none;
+	padding: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text);
+	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.shelf-tile-title:hover {
+	text-decoration: underline;
+}
+
+.shelf-tile-artist {
+	font-size: 12px;
+	color: var(--text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.explore-stats-row {
+	display: flex;
+	gap: 32px;
+	flex-wrap: wrap;
+}
+
+.listening-chart {
+	display: flex;
+	align-items: flex-end;
+	gap: 10px;
+	height: 100px;
+	padding-top: 8px;
+}
+
+.listening-chart-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	height: 100%;
+	gap: 6px;
+}
+
+.listening-chart-bar {
+	width: 100%;
+	max-width: 22px;
+	background: var(--accent);
+	border-radius: 3px 3px 0 0;
+	opacity: 0.85;
+}
+
+.listening-chart-label {
+	font-size: 10px;
+	color: var(--text-dim);
+}
+
+.artist-bar-row {
+	gap: 8px;
+}
+
+.artist-bar-row .history-rank-name {
+	flex: 0 1 auto;
+	max-width: 40%;
+}
+
+.artist-bar-track {
+	flex: 1;
+	height: 5px;
+	border-radius: 999px;
+	background: var(--surface);
+	overflow: hidden;
+}
+
+.artist-bar-fill {
+	display: block;
+	height: 100%;
+	background: var(--accent);
+	border-radius: 999px;
 }
 
 /* ---------- responsive overrides (kept last so they win over base rules) ---------- */

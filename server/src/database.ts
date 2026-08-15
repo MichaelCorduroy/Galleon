@@ -49,4 +49,29 @@ db.exec(`CREATE TABLE IF NOT EXISTS similar_artists (
 	PRIMARY KEY (artist, similar_artist)
 )`);
 
+// one row per "real" listen (see the play-tracking threshold in
+// useAudioPlayer.ts, mirroring Last.fm's scrobble rule) — title/artist/album
+// are denormalized at insert time so history stays meaningful even if the
+// underlying song is later rescanned away or retagged; song_id is kept
+// nullable for the same reason
+db.exec(`CREATE TABLE IF NOT EXISTS play_history (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	song_id INTEGER REFERENCES songs(id) ON DELETE SET NULL,
+	title TEXT NOT NULL,
+	artist TEXT NOT NULL,
+	album TEXT NOT NULL,
+	track_duration REAL,
+	played_seconds REAL NOT NULL,
+	played_at INTEGER NOT NULL
+)`);
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_play_history_played_at ON play_history(played_at)`);
+
+// explicit like — a much stronger signal than a passive listen, kept
+// separate from play_history since it's not an event, it's a toggleable state
+db.exec(`CREATE TABLE IF NOT EXISTS liked_songs (
+	song_id INTEGER PRIMARY KEY REFERENCES songs(id) ON DELETE CASCADE,
+	liked_at INTEGER NOT NULL
+)`);
+
 export default db;

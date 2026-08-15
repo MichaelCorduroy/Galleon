@@ -35,6 +35,7 @@ interface MiniPlayerProps {
 	onToggleShuffle: () => void;
 	onCycleRepeat: () => void;
 	onToggleQueue: () => void;
+	onOpenAlbum: () => void;
 	onOpenNowPlaying: () => void;
 	onEnableVisualizer: () => void;
 	getFrequencyData: (out: Uint8Array) => void;
@@ -58,6 +59,7 @@ export function MiniPlayer({
 	onToggleShuffle,
 	onCycleRepeat,
 	onToggleQueue,
+	onOpenAlbum,
 	onOpenNowPlaying,
 	onEnableVisualizer,
 	getFrequencyData,
@@ -98,7 +100,13 @@ export function MiniPlayer({
 						/>
 					</button>
 					<div className="mini-player-info">
-						<span className="mini-player-title">{currentSong ? currentSong.title : "Nothing playing"}</span>
+						{currentSong ? (
+							<button className="mini-player-title mini-player-title-link" onClick={onOpenAlbum}>
+								{currentSong.title}
+							</button>
+						) : (
+							<span className="mini-player-title">Nothing playing</span>
+						)}
 						<span className="mini-player-artist">
 							{currentSong
 								? `${currentSong.artist} · ${formatTime(currentTime)} / ${formatTime(duration)}`

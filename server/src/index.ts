@@ -7,6 +7,16 @@ import db from "./database";
 import { getTracklist, linkDownloadedSong, normalizeTitle, searchMissingTracks } from "./enrich";
 import { getSimilarArtists } from "./lastfm";
 import { downloadTrack, listDownloadJobs } from "./downloader";
+import {
+	getDailyListening,
+	getHistoryStats,
+	getRecentlyPlayedSongs,
+	getTopPlayedSongs,
+	listHistory,
+	logPlay,
+} from "./history";
+import { likeSong, listLikedSongs, unlikeSong } from "./liked";
+import { getDiscoverPlaylist } from "./discover";
 
 const MIME_TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
@@ -33,7 +43,11 @@ async function start() {
 	
 
 await app.register(cors, {
-	origin: true 
+	origin: true,
+	// @fastify/cors defaults to "GET,HEAD,POST" only — without this, the
+	// browser's preflight silently blocks every DELETE (like the liked-songs
+	// toggle) and would block PUT/PATCH too if anything ever needs them
+	methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
 });
 
 
@@ -185,6 +199,78 @@ app.post("/download", async (request, reply) => {
 // recent first, capped ring buffer, no auth/pagination needed at this scale
 app.get("/downloads", async () => {
 	return listDownloadJobs();
+});
+
+// logged by the frontend once a track crosses the "real listen" threshold
+// (see useAudioPlayer.ts) — this is the data the ThinkPad's local LLM is
+// meant to eventually read for curation, so keep the shape simple and stable
+app.post("/history", async (request, reply) => {
+	const { songId, playedSeconds } = request.body as { songId?: number; playedSeconds?: number };
+	if (typeof songId !== "number" || typeof playedSeconds !== "number" || playedSeconds <= 0) {
+		return reply.code(400).send({ error: "songId and playedSeconds are required" });
+	}
+
+	const entry = logPlay(songId, playedSeconds);
+	if (!entry) return reply.code(404).send({ error: "Song not found" });
+	return entry;
+});
+
+app.get("/history", async (request) => {
+	const { limit } = request.query as { limit?: string };
+	return listHistory(limit ? parseInt(limit, 10) : undefined);
+});
+
+app.get("/history/stats", async (request) => {
+	const { days } = request.query as { days?: string };
+	return getHistoryStats(days ? parseInt(days, 10) : undefined);
+});
+
+app.post("/songs/:id/like", async (request, reply) => {
+	const { id } = request.params as { id: string };
+	const songId = parseInt(id, 10);
+	if (Number.isNaN(songId)) return reply.code(400).send({ error: "Invalid song id" });
+
+	const ok = likeSong(songId);
+	if (!ok) return reply.code(404).send({ error: "Song not found" });
+	return { success: true };
+});
+
+app.delete("/songs/:id/like", async (request, reply) => {
+	const { id } = request.params as { id: string };
+	const songId = parseInt(id, 10);
+	if (Number.isNaN(songId)) return reply.code(400).send({ error: "Invalid song id" });
+
+	unlikeSong(songId);
+	return { success: true };
+});
+
+app.get("/liked-songs", async () => {
+	return listLikedSongs();
+});
+
+// bundles everything the explore page needs into one round trip — top
+// played/recently played songs (joined against songs so playback works),
+// a small daily-listening chart, and the existing 30-day top-artists stat
+app.get("/explore", async () => {
+	return {
+		topPlayed: getTopPlayedSongs(12),
+		recentlyPlayed: getRecentlyPlayedSongs(12),
+		dailyListening: getDailyListening(7),
+		topArtists: getHistoryStats(30).topArtists,
+	};
+});
+
+// Last.fm-powered "based on your taste" shelf — separate from /explore since
+// it needs live similar-artist lookups and shouldn't slow down or fail the
+// rest of the explore page if Last.fm is unreachable or unconfigured
+app.get("/discover", async (request, reply) => {
+	const { limit } = request.query as { limit?: string };
+	try {
+		return await getDiscoverPlaylist(limit ? parseInt(limit, 10) : undefined);
+	} catch (err) {
+		app.log.error(err);
+		return reply.code(502).send({ error: "Failed to build discover playlist" });
+	}
 });
 
 app.get("/health", async () => {

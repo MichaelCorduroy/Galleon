@@ -154,3 +154,82 @@ export async function fetchDownloadJobs(): Promise<DownloadJob[]> {
 	if (!res.ok) return [];
 	return res.json();
 }
+
+export interface PlayHistoryEntry {
+	id: number;
+	songId: number | null;
+	title: string;
+	artist: string;
+	album: string;
+	trackDuration: number | null;
+	playedSeconds: number;
+	playedAt: number;
+}
+
+export interface HistoryStats {
+	totalPlays: number;
+	totalSeconds: number;
+	topArtists: { artist: string; plays: number; seconds: number }[];
+	topSongs: { title: string; artist: string; plays: number; seconds: number }[];
+}
+
+// fire-and-forget — logging a play should never interrupt playback if it fails
+export function logPlay(songId: number, playedSeconds: number): void {
+	fetch(`${API_BASE}/history`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ songId, playedSeconds }),
+	}).catch(() => {});
+}
+
+export async function fetchHistory(limit = 100): Promise<PlayHistoryEntry[]> {
+	const res = await fetch(`${API_BASE}/history?limit=${limit}`);
+	if (!res.ok) return [];
+	return res.json();
+}
+
+export async function fetchHistoryStats(days?: number): Promise<HistoryStats | null> {
+	const res = await fetch(`${API_BASE}/history/stats${days ? `?days=${days}` : ""}`);
+	if (!res.ok) return null;
+	return res.json();
+}
+
+export interface LikedSong extends Song {
+	likedAt: number;
+}
+
+export async function likeSong(songId: number): Promise<void> {
+	await fetch(`${API_BASE}/songs/${songId}/like`, { method: "POST" }).catch(() => {});
+}
+
+export async function unlikeSong(songId: number): Promise<void> {
+	await fetch(`${API_BASE}/songs/${songId}/like`, { method: "DELETE" }).catch(() => {});
+}
+
+export async function fetchLikedSongs(): Promise<LikedSong[]> {
+	const res = await fetch(`${API_BASE}/liked-songs`);
+	if (!res.ok) return [];
+	return res.json();
+}
+
+export interface ExploreData {
+	topPlayed: (Song & { playCount: number })[];
+	recentlyPlayed: (Song & { lastPlayedAt: number })[];
+	dailyListening: { date: string; seconds: number }[];
+	topArtists: { artist: string; plays: number; seconds: number }[];
+}
+
+export async function fetchExplore(): Promise<ExploreData | null> {
+	const res = await fetch(`${API_BASE}/explore`);
+	if (!res.ok) return null;
+	return res.json();
+}
+
+// "based on your taste" — songs you own by artists similar to your top
+// played artists, via Last.fm; separate call so a slow/unconfigured Last.fm
+// doesn't hold up the rest of the explore page
+export async function fetchDiscover(limit = 12): Promise<Song[]> {
+	const res = await fetch(`${API_BASE}/discover?limit=${limit}`);
+	if (!res.ok) return [];
+	return res.json();
+}

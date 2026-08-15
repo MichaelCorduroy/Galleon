@@ -3,6 +3,7 @@ import { coverUrl } from "../api";
 import type { RepeatMode } from "../useAudioPlayer";
 import { ChevronLeftIcon, NextIcon, PauseIcon, PlayIcon, PrevIcon, RepeatIcon, RepeatOneIcon, ShuffleIcon } from "../icons";
 import { CoverArt } from "./CoverArt";
+import { LikeButton } from "./LikeButton";
 import { formatTime } from "../format";
 
 interface NowPlayingViewProps {
@@ -12,6 +13,9 @@ interface NowPlayingViewProps {
 	duration: number;
 	shuffle: boolean;
 	repeatMode: RepeatMode;
+	liked: boolean;
+	onToggleLike: () => void;
+	onOpenAlbum: () => void;
 	onBack: () => void;
 	onTogglePlay: () => void;
 	onNext: () => void;
@@ -29,6 +33,9 @@ export function NowPlayingView({
 	duration,
 	shuffle,
 	repeatMode,
+	liked,
+	onToggleLike,
+	onOpenAlbum,
 	onBack,
 	onTogglePlay,
 	onNext,
@@ -42,7 +49,7 @@ export function NowPlayingView({
 		<div className="now-playing">
 			<button className="text-btn back-link" onClick={onBack}>
 				<ChevronLeftIcon size={13} />
-				Library
+				Back
 			</button>
 
 			<div className="now-playing-stage">
@@ -54,7 +61,16 @@ export function NowPlayingView({
 				/>
 
 				<div className="now-playing-info">
-					<div className="now-playing-title">{currentSong ? currentSong.title : "Nothing playing"}</div>
+					<div className="now-playing-title-row">
+						{currentSong ? (
+							<button className="now-playing-title now-playing-title-link" onClick={onOpenAlbum}>
+								{currentSong.title}
+							</button>
+						) : (
+							<div className="now-playing-title">Nothing playing</div>
+						)}
+						{currentSong && <LikeButton liked={liked} onToggle={onToggleLike} />}
+					</div>
 					{currentSong ? (
 						<button className="link-btn now-playing-artist" onClick={() => onOpenArtist(currentSong.artist)}>
 							{currentSong.artist}

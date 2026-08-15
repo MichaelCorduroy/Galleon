@@ -3,11 +3,18 @@ import {
 	downloadKey,
 	downloadTrack as apiDownloadTrack,
 	fetchAlbums,
+	fetchDiscover,
+	fetchExplore,
+	fetchLikedSongs,
 	fetchSongs,
 	fetchTracklist,
+	likeSong as apiLikeSong,
 	scanLibrary,
+	unlikeSong as apiUnlikeSong,
 	withRetry,
 	type Album,
+	type ExploreData,
+	type LikedSong,
 	type Song,
 	type Tracklist,
 } from "./api";
@@ -21,15 +28,19 @@ import { AlbumGrid } from "./components/AlbumGrid";
 import { AlbumView } from "./components/AlbumView";
 import { ArtistGrid } from "./components/ArtistGrid";
 import { ArtistView } from "./components/ArtistView";
+import { ExploreView } from "./components/ExploreView";
+import { HistoryView } from "./components/HistoryView";
 import { NowPlayingView } from "./components/NowPlayingView";
 import { SearchBar } from "./components/SearchBar";
 import { SearchResults } from "./components/SearchResults";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { DownloadsIndicator } from "./components/DownloadsIndicator";
+import { ChevronLeftIcon, HistoryIcon } from "./icons";
 import { Queue } from "./components/Queue";
 import "./player.css";
 
-type LibraryView = "songs" | "albums" | "artists";
+type LibraryView = "songs" | "albums" | "artists" | "liked";
+type BaseView = "explore" | "library";
 
 function App() {
 	const player = useAudioPlayer();
@@ -46,10 +57,26 @@ function App() {
 	const [albumSongsLoading, setAlbumSongsLoading] = useState(false);
 	const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
 	const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+	const [historyOpen, setHistoryOpen] = useState(false);
+	const [baseView, setBaseView] = useState<BaseView>("explore");
+
+	const [explore, setExplore] = useState<ExploreData | null>(null);
+	const [exploreLoading, setExploreLoading] = useState(true);
+	const [discover, setDiscover] = useState<Song[]>([]);
+	const [discoverLoading, setDiscoverLoading] = useState(true);
+	const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
+	const likedIds = useMemo(() => new Set(likedSongs.map((s) => s.id)), [likedSongs]);
 
 	useEffect(() => {
 		withRetry(fetchSongs).then(setLibrary).catch(() => {});
 		withRetry(fetchAlbums).then(setAlbums).catch(() => {});
+		fetchExplore()
+			.then(setExplore)
+			.finally(() => setExploreLoading(false));
+		fetchDiscover()
+			.then(setDiscover)
+			.finally(() => setDiscoverLoading(false));
+		fetchLikedSongs().then(setLikedSongs);
 	}, []);
 
 	const artists = useMemo(() => deriveArtists(albums), [albums]);
@@ -75,6 +102,7 @@ function App() {
 			setSelectedAlbum(null);
 			setSelectedArtist(null);
 			setNowPlayingOpen(false);
+			setHistoryOpen(false);
 		}
 	};
 
@@ -82,6 +110,7 @@ function App() {
 		setQuery("");
 		setSelectedArtist(null);
 		setNowPlayingOpen(false);
+		setHistoryOpen(false);
 		setSelectedAlbum(album);
 		setAlbumSongsLoading(true);
 		setTracklist(null);
@@ -91,10 +120,21 @@ function App() {
 			.finally(() => setAlbumSongsLoading(false));
 	};
 
+	// songs don't carry a track count, but openAlbum only reads .album/.artist
+	// to fetch the real tracklist — the placeholder tracks:0 is never rendered
+	const openAlbumFromSong = (song: Song) => {
+		openAlbum({ album: song.album, artist: song.artist, cover: song.cover, tracks: 0 });
+	};
+
+	const openCurrentSongAlbum = () => {
+		if (player.currentSong) openAlbumFromSong(player.currentSong);
+	};
+
 	const openArtist = (artist: string) => {
 		setQuery("");
 		setSelectedAlbum(null);
 		setNowPlayingOpen(false);
+		setHistoryOpen(false);
 		setSelectedArtist(artist);
 	};
 
@@ -102,13 +142,50 @@ function App() {
 		setQuery("");
 		setSelectedAlbum(null);
 		setSelectedArtist(null);
+		setHistoryOpen(false);
 		setNowPlayingOpen(true);
 	};
 
-	const backToLibrary = () => {
+	const openHistory = () => {
+		setQuery("");
 		setSelectedAlbum(null);
 		setSelectedArtist(null);
 		setNowPlayingOpen(false);
+		setHistoryOpen(true);
+	};
+
+	// closes whatever overlay is open (album/artist/now-playing/history),
+	// revealing whichever base view (explore or library tabs) was underneath
+	const closeOverlay = () => {
+		setSelectedAlbum(null);
+		setSelectedArtist(null);
+		setNowPlayingOpen(false);
+		setHistoryOpen(false);
+	};
+
+	const openExplore = () => {
+		setQuery("");
+		closeOverlay();
+		setBaseView("explore");
+	};
+
+	const openLibrary = () => {
+		setQuery("");
+		closeOverlay();
+		setBaseView("library");
+	};
+
+	const openLikedSongs = () => {
+		setQuery("");
+		closeOverlay();
+		setBaseView("library");
+		setLibraryView("liked");
+	};
+
+	const shuffleLibrary = () => {
+		if (library.length === 0) return;
+		if (!player.shuffle) player.toggleShuffle();
+		player.playFromList(library, Math.floor(Math.random() * library.length));
 	};
 
 	const artistAlbums = useMemo(
@@ -117,6 +194,18 @@ function App() {
 	);
 
 	const librarySongsById = useMemo(() => new Map(library.map((s) => [s.id, s])), [library]);
+
+	const toggleLike = (songId: number) => {
+		if (likedIds.has(songId)) {
+			setLikedSongs((prev) => prev.filter((s) => s.id !== songId));
+			apiUnlikeSong(songId);
+			return;
+		}
+		const song = librarySongsById.get(songId);
+		if (!song) return;
+		setLikedSongs((prev) => [{ ...song, likedAt: Date.now() }, ...prev]);
+		apiLikeSong(songId);
+	};
 
 	// the tracklist from the backend includes gaps for tracks we don't own —
 	// playback only ever walks the owned subset, in canonical album order
@@ -178,18 +267,30 @@ function App() {
 		? "search"
 		: nowPlayingOpen
 			? "nowplaying"
-			: selectedAlbum
-				? "album"
-				: selectedArtist
-					? "artist"
-					: "library";
+			: historyOpen
+				? "history"
+				: selectedAlbum
+					? "album"
+					: selectedArtist
+						? "artist"
+						: baseView;
 
 	return (
 		<div className="app">
 			<header className="app-header">
-				<h1 className="app-title">Galleon</h1>
+				<button className="app-title" onClick={openExplore}>
+					Galleon
+				</button>
 				<SearchBar value={query} onChange={handleQueryChange} />
 				<DownloadsIndicator />
+				<button
+					className="icon-btn header-icon-btn"
+					onClick={openHistory}
+					aria-label="Listening history"
+					title="Listening history"
+				>
+					<HistoryIcon size={15} />
+				</button>
 				<ThemeToggle theme={theme} onToggle={toggleTheme} />
 			</header>
 
@@ -204,6 +305,8 @@ function App() {
 						shuffle={player.shuffle}
 						repeatMode={player.repeatMode}
 						showQueue={showQueue}
+						liked={player.currentSong ? likedIds.has(player.currentSong.id) : false}
+						onToggleLike={() => player.currentSong && toggleLike(player.currentSong.id)}
 						onTogglePlay={player.togglePlay}
 						onNext={player.next}
 						onPrev={player.prev}
@@ -212,6 +315,7 @@ function App() {
 						onToggleShuffle={player.toggleShuffle}
 						onCycleRepeat={player.cycleRepeatMode}
 						onToggleQueue={() => setShowQueue((v) => !v)}
+						onOpenAlbum={openCurrentSongAlbum}
 						onOpenArtist={openArtist}
 						onOpenNowPlaying={openNowPlaying}
 						onEnableVisualizer={player.enableVisualizer}
@@ -236,6 +340,8 @@ function App() {
 									onOpenArtist={openArtist}
 									downloadingKeys={downloadingKeys}
 									onDownload={handleDownload}
+									likedIds={likedIds}
+									onToggleLike={toggleLike}
 								/>
 							)}
 
@@ -245,13 +351,15 @@ function App() {
 									tracks={tracklist?.tracks ?? []}
 									loading={albumSongsLoading}
 									currentSongId={player.currentSong?.id}
-									onBack={backToLibrary}
+									onBack={closeOverlay}
 									onPlayAll={playAlbumFromStart}
 									onSelect={playTracklistSong}
 									onAddToQueue={queueTracklistSong}
 									onOpenArtist={openArtist}
 									downloadingKeys={downloadingKeys}
 									onDownload={handleDownload}
+									likedIds={likedIds}
+									onToggleLike={toggleLike}
 								/>
 							)}
 
@@ -259,7 +367,7 @@ function App() {
 								<ArtistView
 									artist={selectedArtist}
 									albums={artistAlbums}
-									onBack={backToLibrary}
+									onBack={closeOverlay}
 									onOpenAlbum={openAlbum}
 									onSearchArtist={handleQueryChange}
 								/>
@@ -273,7 +381,10 @@ function App() {
 									duration={player.duration}
 									shuffle={player.shuffle}
 									repeatMode={player.repeatMode}
-									onBack={backToLibrary}
+									liked={player.currentSong ? likedIds.has(player.currentSong.id) : false}
+									onToggleLike={() => player.currentSong && toggleLike(player.currentSong.id)}
+									onOpenAlbum={openCurrentSongAlbum}
+									onBack={closeOverlay}
 									onTogglePlay={player.togglePlay}
 									onNext={player.next}
 									onPrev={player.prev}
@@ -284,8 +395,35 @@ function App() {
 								/>
 							)}
 
+							{contentMode === "history" && <HistoryView onBack={closeOverlay} onOpenArtist={openArtist} />}
+
+							{contentMode === "explore" && (
+								<ExploreView
+									explore={explore}
+									loading={exploreLoading}
+									discover={discover}
+									discoverLoading={discoverLoading}
+									albums={albums}
+									likedPreview={likedSongs.slice(0, 10)}
+									likedIds={likedIds}
+									onToggleLike={toggleLike}
+									onShuffleLibrary={shuffleLibrary}
+									onPlaySong={(list, i) => player.playFromList(list, i)}
+									onOpenAlbum={openAlbum}
+									onOpenAlbumFromSong={openAlbumFromSong}
+									onOpenArtist={openArtist}
+									onSeeLiked={openLikedSongs}
+									onBrowseLibrary={openLibrary}
+								/>
+							)}
+
 							{contentMode === "library" && (
 								<>
+									<button className="text-btn back-link" onClick={openExplore}>
+										<ChevronLeftIcon size={13} />
+										Explore
+									</button>
+
 									<div className="library-toolbar">
 										<div className="view-tabs">
 											<button
@@ -306,12 +444,19 @@ function App() {
 											>
 												Artists
 											</button>
+											<button
+												className={`view-tab ${libraryView === "liked" ? "active" : ""}`}
+												onClick={() => setLibraryView("liked")}
+											>
+												Liked
+											</button>
 										</div>
 										<div className="library-toolbar-right">
 											<span className="library-count">
 												{libraryView === "songs" && `${library.length} tracks`}
 												{libraryView === "albums" && `${albums.length} albums`}
 												{libraryView === "artists" && `${artists.length} artists`}
+												{libraryView === "liked" && `${likedSongs.length} liked`}
 											</span>
 											<button className="text-btn" onClick={rescan} disabled={scanning}>
 												{scanning ? "Scanning…" : "Rescan library"}
@@ -326,6 +471,10 @@ function App() {
 											onSelect={(i) => player.playFromList(library, i)}
 											onAddToQueue={player.addToQueue}
 											emptyMessage="No tracks found. Rescan your library."
+											likedIds={likedIds}
+											onToggleLike={toggleLike}
+											onOpenAlbum={openAlbumFromSong}
+											onOpenArtist={openArtist}
 										/>
 									)}
 									{libraryView === "albums" && (
@@ -333,6 +482,19 @@ function App() {
 									)}
 									{libraryView === "artists" && (
 										<ArtistGrid artists={artists} onOpen={openArtist} emptyMessage="No artists found. Rescan your library." />
+									)}
+									{libraryView === "liked" && (
+										<TrackList
+											songs={likedSongs}
+											currentSongId={player.currentSong?.id}
+											onSelect={(i) => player.playFromList(likedSongs, i)}
+											onAddToQueue={player.addToQueue}
+											emptyMessage="No liked songs yet — tap the heart on any track to save it here."
+											likedIds={likedIds}
+											onToggleLike={toggleLike}
+											onOpenAlbum={openAlbumFromSong}
+											onOpenArtist={openArtist}
+										/>
 									)}
 								</>
 							)}
@@ -373,6 +535,7 @@ function App() {
 				onToggleShuffle={player.toggleShuffle}
 				onCycleRepeat={player.cycleRepeatMode}
 				onToggleQueue={() => setShowQueue((v) => !v)}
+				onOpenAlbum={openCurrentSongAlbum}
 				onOpenNowPlaying={openNowPlaying}
 				onEnableVisualizer={player.enableVisualizer}
 				getFrequencyData={player.getFrequencyData}
