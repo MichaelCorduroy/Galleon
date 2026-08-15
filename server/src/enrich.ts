@@ -193,6 +193,25 @@ export async function searchMissingTracks(query: string): Promise<MissingTrackRe
 	return merged.slice(0, 30);
 }
 
+const updateTrackSongId = db.prepare(
+	`UPDATE mb_tracks SET song_id = ?, duration = ? WHERE album_id = ? AND title = ?`,
+);
+
+// after a track is downloaded and rescanned into the songs table, flip its
+// cached mb_tracks row from missing to owned without needing another
+// MusicBrainz round trip
+export function linkDownloadedSong(artist: string, album: string, trackTitle: string): number | null {
+	const albumRow = findAlbum.get(album, artist) as { id: number } | undefined;
+	if (!albumRow) return null;
+
+	const localSongs = localSongsForAlbum.all(artist, album) as { id: number; title: string; duration: number }[];
+	const match = localSongs.find((s) => normalizeTitle(s.title) === normalizeTitle(trackTitle));
+	if (!match) return null;
+
+	updateTrackSongId.run(match.id, match.duration, albumRow.id, trackTitle);
+	return match.id;
+}
+
 function localOnlyTracklist(
 	album: string,
 	artist: string,

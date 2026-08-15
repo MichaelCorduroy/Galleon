@@ -11,6 +11,10 @@ server/covers/
 
 # Dependencies
 node_modules
+server/.venv
+
+# Optional yt-dlp auth cookies — sensitive, never commit
+server/cookies.txt
 
 # Env variables
 .env

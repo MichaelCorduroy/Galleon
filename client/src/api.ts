@@ -101,6 +101,30 @@ export async function fetchSimilarArtists(artist: string): Promise<SimilarArtist
 	return res.json();
 }
 
+export interface DownloadResponse {
+	success: boolean;
+	songId?: number;
+	error?: string;
+}
+
+// shared key format for tracking in-flight downloads by (artist, album,
+// title) — used by App.tsx's download state and every component that reads
+// it, so they need to agree on the exact same string shape
+export function downloadKey(artist: string, album: string, title: string): string {
+	return `${artist}::${album}::${title}`;
+}
+
+export async function downloadTrack(artist: string, album: string, title: string): Promise<DownloadResponse> {
+	const res = await fetch(`${API_BASE}/download`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ artist, album, title }),
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) return { success: false, error: data.error ?? `Request failed (${res.status})` };
+	return data;
+}
+
 export async function scanLibrary(): Promise<Song[]> {
 	const res = await fetch(`${API_BASE}/scan`);
 	return res.json();
@@ -112,4 +136,21 @@ export function streamUrl(id: number): string {
 
 export function coverUrl(cover: string | null): string | undefined {
 	return cover ? `${API_BASE}/covers/${cover}` : undefined;
+}
+
+export interface DownloadJob {
+	id: number;
+	artist: string;
+	album: string;
+	title: string;
+	status: "pending" | "downloading" | "success" | "failed";
+	error?: string;
+	startedAt: number;
+	finishedAt?: number;
+}
+
+export async function fetchDownloadJobs(): Promise<DownloadJob[]> {
+	const res = await fetch(`${API_BASE}/downloads`);
+	if (!res.ok) return [];
+	return res.json();
 }

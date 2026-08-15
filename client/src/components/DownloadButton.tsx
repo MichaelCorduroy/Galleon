@@ -4,17 +4,24 @@ import { DownloadIcon } from "../icons";
 interface DownloadButtonProps {
 	title?: string;
 	small?: boolean;
+	downloading?: boolean;
+	onDownload: () => void;
 }
 
-// intentionally a no-op for now — just a placeholder affordance for a
-// future "fetch this track/album" action
-export function DownloadButton({ title = "Download", small }: DownloadButtonProps) {
+export function DownloadButton({ title = "Download", small, downloading, onDownload }: DownloadButtonProps) {
 	const handleClick = (e: MouseEvent) => {
 		e.stopPropagation();
+		if (!downloading) onDownload();
 	};
 
 	return (
-		<button className="icon-btn download-btn" onClick={handleClick} aria-label={title} title={title}>
+		<button
+			className={`icon-btn download-btn ${downloading ? "downloading" : ""}`}
+			onClick={handleClick}
+			aria-label={downloading ? "Downloading…" : title}
+			title={downloading ? "Downloading…" : title}
+			disabled={downloading}
+		>
 			<DownloadIcon size={small ? 12 : 13} />
 		</button>
 	);

@@ -4,8 +4,9 @@ import {scanDirectory} from "./scanner";
 import fs from "node:fs";
 import path from "node:path";
 import db from "./database";
-import { getTracklist, searchMissingTracks } from "./enrich";
+import { getTracklist, linkDownloadedSong, normalizeTitle, searchMissingTracks } from "./enrich";
 import { getSimilarArtists } from "./lastfm";
+import { downloadTrack, listDownloadJobs } from "./downloader";
 
 const MIME_TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
@@ -144,6 +145,46 @@ app.get("/search/missing", async (request) => {
 	const { q } = request.query as { q?: string };
 	if (!q || !q.trim()) return [];
 	return searchMissingTracks(q.trim());
+});
+
+app.post("/download", async (request, reply) => {
+	const { artist, album, title } = request.body as { artist?: string; album?: string; title?: string };
+	if (!artist || !album || !title) {
+		return reply.code(400).send({ error: "artist, album and title are required" });
+	}
+
+	// re-derives (or reuses the cache for) the canonical tracklist rather
+	// than trusting the client's title/position blindly — this also means a
+	// track surfaced via live search (never "opened" as an album before)
+	// gets properly cached here for the first time
+	let tracklist;
+	try {
+		tracklist = await getTracklist(artist, album);
+	} catch (err) {
+		app.log.error(err);
+		return reply.code(502).send({ error: "Failed to look up track metadata" });
+	}
+
+	const track = tracklist.tracks.find((t) => normalizeTitle(t.title) === normalizeTitle(title) && !t.owned);
+	if (!track) {
+		return reply.code(404).send({ error: "Track not found in this album, or already owned" });
+	}
+
+	const result = await downloadTrack(artist, album, track.title, track.position);
+	if (!result.success || !result.filePath) {
+		return reply.code(502).send({ error: result.error ?? "Download failed" });
+	}
+
+	await scanDirectory(path.dirname(result.filePath));
+	const songId = linkDownloadedSong(artist, album, track.title);
+
+	return { success: true, songId };
+});
+
+// polled by the frontend to drive an "active downloads" indicator — most
+// recent first, capped ring buffer, no auth/pagination needed at this scale
+app.get("/downloads", async () => {
+	return listDownloadJobs();
 });
 
 app.get("/health", async () => {

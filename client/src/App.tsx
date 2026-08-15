@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAlbums, fetchSongs, fetchTracklist, scanLibrary, withRetry, type Album, type Song, type Tracklist } from "./api";
+import {
+	downloadKey,
+	downloadTrack as apiDownloadTrack,
+	fetchAlbums,
+	fetchSongs,
+	fetchTracklist,
+	scanLibrary,
+	withRetry,
+	type Album,
+	type Song,
+	type Tracklist,
+} from "./api";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useTheme } from "./useTheme";
 import { deriveArtists } from "./artists";
@@ -14,6 +25,7 @@ import { NowPlayingView } from "./components/NowPlayingView";
 import { SearchBar } from "./components/SearchBar";
 import { SearchResults } from "./components/SearchResults";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { DownloadsIndicator } from "./components/DownloadsIndicator";
 import { Queue } from "./components/Queue";
 import "./player.css";
 
@@ -130,6 +142,38 @@ function App() {
 		if (song) player.addToQueue(song);
 	};
 
+	// download is fired from three places (album view, its "download all
+	// missing" button, and search results) — keep the in-flight/refresh
+	// logic in one spot rather than duplicating it per call site
+	const [downloadingKeys, setDownloadingKeys] = useState<Set<string>>(new Set());
+
+	const handleDownload = async (artist: string, album: string, title: string) => {
+		const key = downloadKey(artist, album, title);
+		if (downloadingKeys.has(key)) return;
+		setDownloadingKeys((prev) => new Set(prev).add(key));
+
+		try {
+			const result = await apiDownloadTrack(artist, album, title);
+			if (result.success) {
+				setLibrary(await fetchSongs());
+				setAlbums(await fetchAlbums());
+				if (selectedAlbum && selectedAlbum.artist === artist && selectedAlbum.album === album) {
+					setTracklist(await fetchTracklist(album, artist));
+				}
+			} else {
+				console.error("Download failed:", result.error);
+			}
+		} catch (err) {
+			console.error("Download failed:", err);
+		} finally {
+			setDownloadingKeys((prev) => {
+				const next = new Set(prev);
+				next.delete(key);
+				return next;
+			});
+		}
+	};
+
 	const contentMode = query.trim()
 		? "search"
 		: nowPlayingOpen
@@ -145,6 +189,7 @@ function App() {
 			<header className="app-header">
 				<h1 className="app-title">Galleon</h1>
 				<SearchBar value={query} onChange={handleQueryChange} />
+				<DownloadsIndicator />
 				<ThemeToggle theme={theme} onToggle={toggleTheme} />
 			</header>
 
@@ -189,6 +234,8 @@ function App() {
 									onAddToQueue={player.addToQueue}
 									onOpenAlbum={openAlbum}
 									onOpenArtist={openArtist}
+									downloadingKeys={downloadingKeys}
+									onDownload={handleDownload}
 								/>
 							)}
 
@@ -203,6 +250,8 @@ function App() {
 									onSelect={playTracklistSong}
 									onAddToQueue={queueTracklistSong}
 									onOpenArtist={openArtist}
+									downloadingKeys={downloadingKeys}
+									onDownload={handleDownload}
 								/>
 							)}
 

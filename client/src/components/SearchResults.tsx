@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Album, MissingTrack, Song } from "../api";
-import { coverUrl, searchMissingTracks } from "../api";
+import { coverUrl, downloadKey, searchMissingTracks } from "../api";
 import type { ArtistSummary } from "../artists";
 import { CoverArt } from "./CoverArt";
 import { DownloadButton } from "./DownloadButton";
@@ -17,6 +17,8 @@ interface SearchResultsProps {
 	onAddToQueue: (song: Song) => void;
 	onOpenAlbum: (album: Album) => void;
 	onOpenArtist: (artist: string) => void;
+	downloadingKeys: Set<string>;
+	onDownload: (artist: string, album: string, title: string) => void;
 }
 
 export function SearchResults({
@@ -29,6 +31,8 @@ export function SearchResults({
 	onAddToQueue,
 	onOpenAlbum,
 	onOpenArtist,
+	downloadingKeys,
+	onDownload,
 }: SearchResultsProps) {
 	const q = query.trim().toLowerCase();
 
@@ -172,7 +176,12 @@ export function SearchResults({
 									</span>
 								</button>
 								<span className="track-duration">{formatTime(track.duration ?? 0)}</span>
-								<DownloadButton title={`Download "${track.title}"`} small />
+								<DownloadButton
+									title={`Download "${track.title}"`}
+									small
+									downloading={downloadingKeys.has(downloadKey(track.artist, track.album, track.title))}
+									onDownload={() => onDownload(track.artist, track.album, track.title)}
+								/>
 							</div>
 						))}
 					</div>

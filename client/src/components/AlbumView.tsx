@@ -1,6 +1,6 @@
 import type { DragEvent } from "react";
 import type { Album, TracklistTrack } from "../api";
-import { coverUrl } from "../api";
+import { coverUrl, downloadKey } from "../api";
 import { CoverArt } from "./CoverArt";
 import { DownloadButton } from "./DownloadButton";
 import { ChevronLeftIcon, PlayIcon, PlusIcon } from "../icons";
@@ -17,6 +17,8 @@ interface AlbumViewProps {
 	onSelect: (songId: number) => void;
 	onAddToQueue: (songId: number) => void;
 	onOpenArtist: (artist: string) => void;
+	downloadingKeys: Set<string>;
+	onDownload: (artist: string, album: string, title: string) => void;
 }
 
 export function AlbumView({
@@ -29,15 +31,26 @@ export function AlbumView({
 	onSelect,
 	onAddToQueue,
 	onOpenArtist,
+	downloadingKeys,
+	onDownload,
 }: AlbumViewProps) {
 	const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
 	const ownedCount = tracks.filter((t) => t.owned).length;
-	const missingCount = tracks.length - ownedCount;
+	const missingTracks = tracks.filter((t) => !t.owned);
+	const missingCount = missingTracks.length;
 
 	const handleDragStart = (e: DragEvent, songId: number) => {
 		e.dataTransfer.setData(SONG_DRAG_MIME, JSON.stringify({ id: songId }));
 		e.dataTransfer.effectAllowed = "copy";
 	};
+
+	const downloadAllMissing = () => {
+		for (const track of missingTracks) {
+			onDownload(album.artist, album.album, track.title);
+		}
+	};
+
+	const albumDownloading = missingTracks.some((t) => downloadingKeys.has(downloadKey(album.artist, album.album, t.title)));
 
 	return (
 		<div className="content-view">
@@ -68,7 +81,13 @@ export function AlbumView({
 						>
 							<PlayIcon size={15} />
 						</button>
-						{missingCount > 0 && <DownloadButton title={`Download ${missingCount} missing tracks`} />}
+						{missingCount > 0 && (
+							<DownloadButton
+								title={`Download ${missingCount} missing tracks`}
+								downloading={albumDownloading}
+								onDownload={downloadAllMissing}
+							/>
+						)}
 					</div>
 				</div>
 			</div>
@@ -107,7 +126,12 @@ export function AlbumView({
 									<PlusIcon size={13} />
 								</button>
 							) : (
-								<DownloadButton title={`Download "${track.title}"`} small />
+								<DownloadButton
+									title={`Download "${track.title}"`}
+									small
+									downloading={downloadingKeys.has(downloadKey(album.artist, album.album, track.title))}
+									onDownload={() => onDownload(album.artist, album.album, track.title)}
+								/>
 							)}
 						</div>
 					))}
