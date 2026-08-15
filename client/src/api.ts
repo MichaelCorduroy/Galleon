@@ -83,6 +83,7 @@ export async function fetchTracklist(album: string, artist: string): Promise<Tra
 	const res = await fetch(
 		`${API_BASE}/albums/${encodeURIComponent(album)}/tracklist?artist=${encodeURIComponent(artist)}`,
 	);
+	if (!res.ok) throw new Error(`Failed to load tracklist (${res.status})`);
 	return res.json();
 }
 

@@ -123,8 +123,12 @@ app.get("/albums/:album/tracklist", async (request, reply) => {
 		return reply.code(400).send({ error: "artist query param is required" });
 	}
 
-	const tracklist = await getTracklist(artist, album);
-	return tracklist;
+	try {
+		return await getTracklist(artist, album);
+	} catch (err) {
+		app.log.error(err);
+		return reply.code(500).send({ error: "Failed to load tracklist" });
+	}
 });
 
 app.get("/artists/:artist/similar", async (request, reply) => {

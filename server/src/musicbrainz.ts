@@ -21,10 +21,13 @@ function rateLimited<T>(fn: () => Promise<T>): Promise<T> {
 	return run;
 }
 
+const REQUEST_TIMEOUT_MS = 8000;
+
 async function mbFetch(url: string): Promise<any> {
 	return rateLimited(async () => {
 		const res = await fetch(url, {
 			headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 		});
 		if (!res.ok) throw new Error(`MusicBrainz request failed: ${res.status} ${res.statusText}`);
 		return res.json();

@@ -72,8 +72,10 @@ function App() {
 		setNowPlayingOpen(false);
 		setSelectedAlbum(album);
 		setAlbumSongsLoading(true);
+		setTracklist(null);
 		fetchTracklist(album.album, album.artist)
 			.then(setTracklist)
+			.catch(() => setTracklist(null))
 			.finally(() => setAlbumSongsLoading(false));
 	};
 

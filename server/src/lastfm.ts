@@ -13,7 +13,7 @@ async function fetchSimilarFromLastfm(artist: string): Promise<SimilarArtist[]> 
 	if (!apiKey) return [];
 
 	const url = `${BASE}?method=artist.getsimilar&artist=${encodeURIComponent(artist)}&api_key=${apiKey}&format=json&limit=12`;
-	const res = await fetch(url);
+	const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
 	if (!res.ok) throw new Error(`Last.fm request failed: ${res.status} ${res.statusText}`);
 
 	const data = await res.json();

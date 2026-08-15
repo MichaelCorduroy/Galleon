@@ -36,11 +36,15 @@ export function normalizeTitle(title: string): string {
 }
 
 const findAlbum = db.prepare(`SELECT id, mbid FROM mb_albums WHERE title = ? AND artist = ?`);
+// OR IGNORE + re-select rather than a plain INSERT: getTracklist has an
+// await in the middle (the MusicBrainz call), so two near-simultaneous
+// requests for the same uncached album can both reach this point — a plain
+// INSERT would throw on the UNIQUE(title, artist) constraint for the loser
 const insertAlbum = db.prepare(
-	`INSERT INTO mb_albums (title, artist, mbid, cover, fetched_at) VALUES (?, ?, ?, ?, ?)`,
+	`INSERT OR IGNORE INTO mb_albums (title, artist, mbid, cover, fetched_at) VALUES (?, ?, ?, ?, ?)`,
 );
 const insertTrack = db.prepare(
-	`INSERT INTO mb_tracks (album_id, position, title, duration, mbid, song_id) VALUES (?, ?, ?, ?, ?, ?)`,
+	`INSERT OR IGNORE INTO mb_tracks (album_id, position, title, duration, mbid, song_id) VALUES (?, ?, ?, ?, ?, ?)`,
 );
 const tracksForAlbum = db.prepare(
 	`SELECT position, title, duration, mbid, song_id as songId FROM mb_tracks WHERE album_id = ? ORDER BY position`,
@@ -97,8 +101,28 @@ export async function getTracklist(artist: string, album: string): Promise<Track
 		return localOnlyTracklist(album, artist, localSongs, localCover);
 	}
 
-	const albumRow = insertAlbum.run(album, artist, release.mbid, localCover, Date.now());
-	const albumId = albumRow.lastInsertRowid as number;
+	insertAlbum.run(album, artist, release.mbid, localCover, Date.now());
+	const albumRow = findAlbum.get(album, artist) as { id: number; mbid: string | null };
+	const albumId = albumRow.id;
+
+	// a concurrent request may have already inserted this album's tracks
+	// between our existence check above and now — don't duplicate the work
+	const alreadyCached = tracksForAlbum.all(albumId) as {
+		position: number;
+		title: string;
+		duration: number | null;
+		mbid: string | null;
+		songId: number | null;
+	}[];
+	if (alreadyCached.length > 0) {
+		return {
+			album,
+			artist,
+			cover: localCover,
+			mbid: albumRow.mbid,
+			tracks: alreadyCached.map((t) => ({ ...t, owned: t.songId !== null })),
+		};
+	}
 
 	const byNormalizedTitle = new Map(localSongs.map((s) => [normalizeTitle(s.title), s]));
 
