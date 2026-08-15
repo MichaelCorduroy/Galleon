@@ -36,6 +36,7 @@ interface BigPlayerProps {
 	onCycleRepeat: () => void;
 	onToggleQueue: () => void;
 	onOpenArtist: (artist: string) => void;
+	onOpenNowPlaying: () => void;
 	onEnableVisualizer: () => void;
 	getFrequencyData: (out: Uint8Array) => void;
 	frequencyBinCount: number;
@@ -59,6 +60,7 @@ export function BigPlayer({
 	onCycleRepeat,
 	onToggleQueue,
 	onOpenArtist,
+	onOpenNowPlaying,
 	onEnableVisualizer,
 	getFrequencyData,
 	frequencyBinCount,
@@ -72,12 +74,14 @@ export function BigPlayer({
 
 	return (
 		<div className="big-player">
-			<CoverArt
-				src={coverUrl(currentSong?.cover ?? null)}
-				alt={currentSong ? `${currentSong.album} cover` : "No cover"}
-				className="cover-art-xl"
-				iconSize={40}
-			/>
+			<button className="cover-art-btn" onClick={onOpenNowPlaying} aria-label="Open now playing view">
+				<CoverArt
+					src={coverUrl(currentSong?.cover ?? null)}
+					alt={currentSong ? `${currentSong.album} cover` : "No cover"}
+					className="cover-art-xl"
+					iconSize={40}
+				/>
+			</button>
 
 			<div className="big-player-info">
 				<div className="big-player-title">{currentSong ? currentSong.title : "Nothing playing"}</div>

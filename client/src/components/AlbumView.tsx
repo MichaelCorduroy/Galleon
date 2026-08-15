@@ -1,26 +1,27 @@
 import type { DragEvent } from "react";
-import type { Album, Song } from "../api";
+import type { Album, TracklistTrack } from "../api";
 import { coverUrl } from "../api";
 import { CoverArt } from "./CoverArt";
+import { DownloadButton } from "./DownloadButton";
 import { ChevronLeftIcon, PlayIcon, PlusIcon } from "../icons";
 import { SONG_DRAG_MIME } from "../dnd";
 import { formatDuration, formatTime } from "../format";
 
 interface AlbumViewProps {
 	album: Album;
-	songs: Song[];
+	tracks: TracklistTrack[];
 	loading: boolean;
 	currentSongId?: number;
 	onBack: () => void;
 	onPlayAll: () => void;
-	onSelect: (index: number) => void;
-	onAddToQueue: (song: Song) => void;
+	onSelect: (songId: number) => void;
+	onAddToQueue: (songId: number) => void;
 	onOpenArtist: (artist: string) => void;
 }
 
 export function AlbumView({
 	album,
-	songs,
+	tracks,
 	loading,
 	currentSongId,
 	onBack,
@@ -29,10 +30,12 @@ export function AlbumView({
 	onAddToQueue,
 	onOpenArtist,
 }: AlbumViewProps) {
-	const totalDuration = songs.reduce((sum, s) => sum + (s.duration || 0), 0);
+	const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
+	const ownedCount = tracks.filter((t) => t.owned).length;
+	const missingCount = tracks.length - ownedCount;
 
-	const handleDragStart = (e: DragEvent, song: Song) => {
-		e.dataTransfer.setData(SONG_DRAG_MIME, JSON.stringify(song));
+	const handleDragStart = (e: DragEvent, songId: number) => {
+		e.dataTransfer.setData(SONG_DRAG_MIME, JSON.stringify({ id: songId }));
 		e.dataTransfer.effectAllowed = "copy";
 	};
 
@@ -52,17 +55,21 @@ export function AlbumView({
 					</button>
 					{!loading && (
 						<div className="view-meta">
-							{songs.length} {songs.length === 1 ? "track" : "tracks"} · {formatDuration(totalDuration)}
+							{tracks.length} {tracks.length === 1 ? "track" : "tracks"} · {formatDuration(totalDuration)}
+							{missingCount > 0 && ` · ${missingCount} missing`}
 						</div>
 					)}
-					<button
-						className="icon-btn icon-btn-primary view-play-btn"
-						onClick={onPlayAll}
-						disabled={songs.length === 0}
-						aria-label="Play album"
-					>
-						<PlayIcon size={15} />
-					</button>
+					<div className="view-header-actions">
+						<button
+							className="icon-btn icon-btn-primary view-play-btn"
+							onClick={onPlayAll}
+							disabled={ownedCount === 0}
+							aria-label="Play album"
+						>
+							<PlayIcon size={15} />
+						</button>
+						{missingCount > 0 && <DownloadButton title={`Download ${missingCount} missing tracks`} />}
+					</div>
 				</div>
 			</div>
 
@@ -70,26 +77,38 @@ export function AlbumView({
 
 			{!loading && (
 				<div className="tracklist-rows">
-					{songs.map((song, i) => (
+					{tracks.map((track) => (
 						<div
-							key={song.id}
-							className={`track-row ${song.id === currentSongId ? "active" : ""}`}
-							draggable
-							onDragStart={(e) => handleDragStart(e, song)}
+							key={track.position}
+							className={`track-row ${track.owned ? "" : "track-row-missing"} ${
+								track.owned && track.songId === currentSongId ? "active" : ""
+							}`}
+							draggable={track.owned}
+							onDragStart={track.owned && track.songId ? (e) => handleDragStart(e, track.songId!) : undefined}
 						>
-							<span className="album-track-number">{i + 1}</span>
-							<button className="track-row-main" onClick={() => onSelect(i)}>
-								<span className="track-title">{song.title}</span>
-							</button>
-							<span className="track-duration">{formatTime(song.duration)}</span>
-							<button
-								className="icon-btn track-add-btn"
-								onClick={() => onAddToQueue(song)}
-								aria-label="Add to queue"
-								title="Add to queue"
-							>
-								<PlusIcon size={13} />
-							</button>
+							<span className="album-track-number">{track.position}</span>
+							{track.owned && track.songId ? (
+								<button className="track-row-main" onClick={() => onSelect(track.songId!)}>
+									<span className="track-title">{track.title}</span>
+								</button>
+							) : (
+								<span className="track-row-main track-row-main-static">
+									<span className="track-title">{track.title}</span>
+								</span>
+							)}
+							<span className="track-duration">{formatTime(track.duration ?? 0)}</span>
+							{track.owned && track.songId ? (
+								<button
+									className="icon-btn track-add-btn"
+									onClick={() => onAddToQueue(track.songId!)}
+									aria-label="Add to queue"
+									title="Add to queue"
+								>
+									<PlusIcon size={13} />
+								</button>
+							) : (
+								<DownloadButton title={`Download "${track.title}"`} small />
+							)}
 						</div>
 					))}
 				</div>

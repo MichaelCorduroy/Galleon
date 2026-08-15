@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAlbums, fetchAlbumSongs, fetchSongs, scanLibrary, withRetry, type Album, type Song } from "./api";
+import { fetchAlbums, fetchSongs, fetchTracklist, scanLibrary, withRetry, type Album, type Song, type Tracklist } from "./api";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useTheme } from "./useTheme";
 import { deriveArtists } from "./artists";
@@ -10,6 +10,7 @@ import { AlbumGrid } from "./components/AlbumGrid";
 import { AlbumView } from "./components/AlbumView";
 import { ArtistGrid } from "./components/ArtistGrid";
 import { ArtistView } from "./components/ArtistView";
+import { NowPlayingView } from "./components/NowPlayingView";
 import { SearchBar } from "./components/SearchBar";
 import { SearchResults } from "./components/SearchResults";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -29,9 +30,10 @@ function App() {
 	const [libraryView, setLibraryView] = useState<LibraryView>("songs");
 
 	const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
-	const [albumSongs, setAlbumSongs] = useState<Song[]>([]);
+	const [tracklist, setTracklist] = useState<Tracklist | null>(null);
 	const [albumSongsLoading, setAlbumSongsLoading] = useState(false);
 	const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
+	const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
 	useEffect(() => {
 		withRetry(fetchSongs).then(setLibrary).catch(() => {});
@@ -51,37 +53,48 @@ function App() {
 		}
 	};
 
-	// the main content area is a single slot: search, album, artist and the
-	// plain library tabs are mutually exclusive — starting a search drops
-	// whatever album/artist was open, and opening an album/artist clears
-	// the search box, so there's never ambiguity about what's showing
+	// the main content area is a single slot: search, now-playing, album,
+	// artist and the plain library tabs are mutually exclusive — starting a
+	// search drops whatever else was open, and opening any of the others
+	// clears the search box, so there's never ambiguity about what's showing
 	const handleQueryChange = (next: string) => {
 		setQuery(next);
 		if (next.trim()) {
 			setSelectedAlbum(null);
 			setSelectedArtist(null);
+			setNowPlayingOpen(false);
 		}
 	};
 
 	const openAlbum = (album: Album) => {
 		setQuery("");
 		setSelectedArtist(null);
+		setNowPlayingOpen(false);
 		setSelectedAlbum(album);
 		setAlbumSongsLoading(true);
-		fetchAlbumSongs(album.album, album.artist)
-			.then(setAlbumSongs)
+		fetchTracklist(album.album, album.artist)
+			.then(setTracklist)
 			.finally(() => setAlbumSongsLoading(false));
 	};
 
 	const openArtist = (artist: string) => {
 		setQuery("");
 		setSelectedAlbum(null);
+		setNowPlayingOpen(false);
 		setSelectedArtist(artist);
+	};
+
+	const openNowPlaying = () => {
+		setQuery("");
+		setSelectedAlbum(null);
+		setSelectedArtist(null);
+		setNowPlayingOpen(true);
 	};
 
 	const backToLibrary = () => {
 		setSelectedAlbum(null);
 		setSelectedArtist(null);
+		setNowPlayingOpen(false);
 	};
 
 	const artistAlbums = useMemo(
@@ -89,7 +102,41 @@ function App() {
 		[albums, selectedArtist],
 	);
 
-	const contentMode = query.trim() ? "search" : selectedAlbum ? "album" : selectedArtist ? "artist" : "library";
+	const librarySongsById = useMemo(() => new Map(library.map((s) => [s.id, s])), [library]);
+
+	// the tracklist from the backend includes gaps for tracks we don't own —
+	// playback only ever walks the owned subset, in canonical album order
+	const albumOwnedSongs = useMemo(() => {
+		if (!tracklist) return [];
+		return tracklist.tracks
+			.filter((t) => t.owned && t.songId !== null)
+			.map((t) => librarySongsById.get(t.songId as number))
+			.filter((s): s is Song => Boolean(s));
+	}, [tracklist, librarySongsById]);
+
+	const playTracklistSong = (songId: number) => {
+		const index = albumOwnedSongs.findIndex((s) => s.id === songId);
+		if (index !== -1) player.playFromList(albumOwnedSongs, index);
+	};
+
+	const playAlbumFromStart = () => {
+		if (albumOwnedSongs.length > 0) player.playFromList(albumOwnedSongs, 0);
+	};
+
+	const queueTracklistSong = (songId: number) => {
+		const song = librarySongsById.get(songId);
+		if (song) player.addToQueue(song);
+	};
+
+	const contentMode = query.trim()
+		? "search"
+		: nowPlayingOpen
+			? "nowplaying"
+			: selectedAlbum
+				? "album"
+				: selectedArtist
+					? "artist"
+					: "library";
 
 	return (
 		<div className="app">
@@ -119,6 +166,7 @@ function App() {
 						onCycleRepeat={player.cycleRepeatMode}
 						onToggleQueue={() => setShowQueue((v) => !v)}
 						onOpenArtist={openArtist}
+						onOpenNowPlaying={openNowPlaying}
 						onEnableVisualizer={player.enableVisualizer}
 						getFrequencyData={player.getFrequencyData}
 						frequencyBinCount={player.frequencyBinCount}
@@ -145,19 +193,44 @@ function App() {
 							{contentMode === "album" && selectedAlbum && (
 								<AlbumView
 									album={selectedAlbum}
-									songs={albumSongs}
+									tracks={tracklist?.tracks ?? []}
 									loading={albumSongsLoading}
 									currentSongId={player.currentSong?.id}
 									onBack={backToLibrary}
-									onPlayAll={() => player.playFromList(albumSongs, 0)}
-									onSelect={(i) => player.playFromList(albumSongs, i)}
-									onAddToQueue={player.addToQueue}
+									onPlayAll={playAlbumFromStart}
+									onSelect={playTracklistSong}
+									onAddToQueue={queueTracklistSong}
 									onOpenArtist={openArtist}
 								/>
 							)}
 
 							{contentMode === "artist" && selectedArtist && (
-								<ArtistView artist={selectedArtist} albums={artistAlbums} onBack={backToLibrary} onOpenAlbum={openAlbum} />
+								<ArtistView
+									artist={selectedArtist}
+									albums={artistAlbums}
+									onBack={backToLibrary}
+									onOpenAlbum={openAlbum}
+									onSearchArtist={handleQueryChange}
+								/>
+							)}
+
+							{contentMode === "nowplaying" && (
+								<NowPlayingView
+									currentSong={player.currentSong}
+									isPlaying={player.isPlaying}
+									currentTime={player.currentTime}
+									duration={player.duration}
+									shuffle={player.shuffle}
+									repeatMode={player.repeatMode}
+									onBack={backToLibrary}
+									onTogglePlay={player.togglePlay}
+									onNext={player.next}
+									onPrev={player.prev}
+									onSeek={player.seek}
+									onToggleShuffle={player.toggleShuffle}
+									onCycleRepeat={player.cycleRepeatMode}
+									onOpenArtist={openArtist}
+								/>
 							)}
 
 							{contentMode === "library" && (
@@ -249,6 +322,7 @@ function App() {
 				onToggleShuffle={player.toggleShuffle}
 				onCycleRepeat={player.cycleRepeatMode}
 				onToggleQueue={() => setShowQueue((v) => !v)}
+				onOpenNowPlaying={openNowPlaying}
 				onEnableVisualizer={player.enableVisualizer}
 				getFrequencyData={player.getFrequencyData}
 				frequencyBinCount={player.frequencyBinCount}

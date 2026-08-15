@@ -1,8 +1,11 @@
+import "dotenv/config";
 import Fastify from "fastify";
 import {scanDirectory} from "./scanner";
 import fs from "node:fs";
 import path from "node:path";
 import db from "./database";
+import { getTracklist, searchMissingTracks } from "./enrich";
+import { getSimilarArtists } from "./lastfm";
 
 const MIME_TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
@@ -110,6 +113,33 @@ app.get("/albums/:album", async (request) => {
 		? db.prepare('SELECT id, title, artist, album, duration, cover FROM songs WHERE album = ? AND artist = ? ORDER BY id').all(album, artist)
 		: db.prepare('SELECT id, title, artist, album, duration, cover FROM songs WHERE album = ? ORDER BY id').all(album);
 	return songs;
+});
+
+app.get("/albums/:album/tracklist", async (request, reply) => {
+	const { album } = request.params as { album: string };
+	const { artist } = request.query as { artist?: string };
+
+	if (!artist) {
+		return reply.code(400).send({ error: "artist query param is required" });
+	}
+
+	const tracklist = await getTracklist(artist, album);
+	return tracklist;
+});
+
+app.get("/artists/:artist/similar", async (request, reply) => {
+	const { artist } = request.params as { artist: string };
+	try {
+		return await getSimilarArtists(artist);
+	} catch {
+		return reply.code(502).send({ error: "Last.fm lookup failed" });
+	}
+});
+
+app.get("/search/missing", async (request) => {
+	const { q } = request.query as { q?: string };
+	if (!q || !q.trim()) return [];
+	return searchMissingTracks(q.trim());
 });
 
 app.get("/health", async () => {

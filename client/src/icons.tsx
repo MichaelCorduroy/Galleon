@@ -170,6 +170,16 @@ export function ChevronLeftIcon({ size = 16 }: IconProps) {
 	);
 }
 
+export function DownloadIcon({ size = 16 }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+			<path d="M8 2v8" strokeLinecap="round" />
+			<path d="M4.5 6.5L8 10l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+			<path d="M2.5 13h11" strokeLinecap="round" />
+		</svg>
+	);
+}
+
 export function GripIcon({ size = 16 }: IconProps) {
 	return (
 		<svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">

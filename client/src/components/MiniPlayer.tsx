@@ -35,6 +35,7 @@ interface MiniPlayerProps {
 	onToggleShuffle: () => void;
 	onCycleRepeat: () => void;
 	onToggleQueue: () => void;
+	onOpenNowPlaying: () => void;
 	onEnableVisualizer: () => void;
 	getFrequencyData: (out: Uint8Array) => void;
 	frequencyBinCount: number;
@@ -57,6 +58,7 @@ export function MiniPlayer({
 	onToggleShuffle,
 	onCycleRepeat,
 	onToggleQueue,
+	onOpenNowPlaying,
 	onEnableVisualizer,
 	getFrequencyData,
 	frequencyBinCount,
@@ -87,12 +89,14 @@ export function MiniPlayer({
 
 			<div className="mini-player-row">
 				<div className="mini-player-track">
-					<CoverArt
-						src={coverUrl(currentSong?.cover ?? null)}
-						alt={currentSong ? `${currentSong.album} cover` : "No cover"}
-						className="cover-art-sm"
-						iconSize={14}
-					/>
+					<button className="cover-art-btn" onClick={onOpenNowPlaying} aria-label="Open now playing view">
+						<CoverArt
+							src={coverUrl(currentSong?.cover ?? null)}
+							alt={currentSong ? `${currentSong.album} cover` : "No cover"}
+							className="cover-art-sm"
+							iconSize={14}
+						/>
+					</button>
 					<div className="mini-player-info">
 						<span className="mini-player-title">{currentSong ? currentSong.title : "Nothing playing"}</span>
 						<span className="mini-player-artist">

@@ -20,6 +20,37 @@ export interface Album {
 	cover: string | null;
 }
 
+export interface TracklistTrack {
+	position: number;
+	title: string;
+	duration: number | null;
+	mbid: string | null;
+	owned: boolean;
+	songId: number | null;
+}
+
+export interface Tracklist {
+	album: string;
+	artist: string;
+	cover: string | null;
+	mbid: string | null;
+	tracks: TracklistTrack[];
+}
+
+export interface MissingTrack {
+	title: string;
+	duration: number | null;
+	mbid: string | null;
+	album: string;
+	artist: string;
+	cover: string | null;
+}
+
+export interface SimilarArtist {
+	name: string;
+	match: number;
+}
+
 // retries a flaky fetch a few times with a short delay — mainly for the
 // initial page load, where the backend may still be booting (e.g. right
 // after a restart) and would otherwise leave the library empty forever
@@ -46,8 +77,26 @@ export async function fetchAlbums(): Promise<Album[]> {
 	return res.json();
 }
 
-export async function fetchAlbumSongs(album: string, artist: string): Promise<Song[]> {
-	const res = await fetch(`${API_BASE}/albums/${encodeURIComponent(album)}?artist=${encodeURIComponent(artist)}`);
+// canonical tracklist merging what's owned locally with the full MusicBrainz
+// release (missing tracks come back with owned:false, songId:null)
+export async function fetchTracklist(album: string, artist: string): Promise<Tracklist> {
+	const res = await fetch(
+		`${API_BASE}/albums/${encodeURIComponent(album)}/tracklist?artist=${encodeURIComponent(artist)}`,
+	);
+	return res.json();
+}
+
+// tracks we know about (from previously-viewed MusicBrainz tracklists) but
+// don't actually have a file for — lets search surface gaps, not just what's
+// on disk
+export async function searchMissingTracks(query: string): Promise<MissingTrack[]> {
+	const res = await fetch(`${API_BASE}/search/missing?q=${encodeURIComponent(query)}`);
+	return res.json();
+}
+
+export async function fetchSimilarArtists(artist: string): Promise<SimilarArtist[]> {
+	const res = await fetch(`${API_BASE}/artists/${encodeURIComponent(artist)}/similar`);
+	if (!res.ok) return [];
 	return res.json();
 }
 
