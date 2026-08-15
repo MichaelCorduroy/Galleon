@@ -6,6 +6,9 @@ music/*
 *.db
 *.sqlite
 
+# Extracted album art cache
+server/covers/
+
 # Dependencies
 node_modules
 

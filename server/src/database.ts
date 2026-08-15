@@ -8,7 +8,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS songs (
 	artist TEXT,
 	album TEXT,
 	path TEXT UNIQUE NOT NULL,
-	duration REAL
+	duration REAL,
+	cover TEXT
 )`);
+
+const columns = db.prepare(`PRAGMA table_info(songs)`).all() as { name: string }[];
+if (!columns.some((c) => c.name === "cover")) {
+	db.exec(`ALTER TABLE songs ADD COLUMN cover TEXT`);
+}
 
 export default db;
