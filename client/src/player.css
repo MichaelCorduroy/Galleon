@@ -1803,18 +1803,222 @@ input[type="range"]:disabled {
 	color: var(--accent);
 }
 
+.genre-web-path-toggle {
+	flex-shrink: 0;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 7px 16px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text);
+	cursor: pointer;
+}
+
+.genre-web-path-toggle:hover {
+	border-color: #d98c3a;
+	color: #d98c3a;
+}
+
+.genre-web-path-toggle.active {
+	background: #d98c3a;
+	border-color: #d98c3a;
+	color: #1a1208;
+}
+
+.genre-web-aura-toggle {
+	flex-shrink: 0;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 7px 16px;
+	font-size: 12px;
+	color: var(--text);
+	cursor: pointer;
+}
+
+.genre-web-aura-toggle:hover {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+.genre-web-aura-toggle.active {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-contrast);
+}
+
+.genre-web-filter-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 10px;
+}
+
+.genre-web-filter-chip {
+	background: hsl(var(--chip-hue) 40% 16%);
+	border: 1px solid hsl(var(--chip-hue) 40% 32%);
+	color: hsl(var(--chip-hue) 55% 72%);
+	border-radius: 999px;
+	padding: 4px 12px;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.genre-web-filter-chip:hover {
+	border-color: hsl(var(--chip-hue) 55% 55%);
+}
+
+.genre-web-filter-chip.active {
+	background: hsl(var(--chip-hue) 55% 45%);
+	border-color: hsl(var(--chip-hue) 55% 45%);
+	color: #0c0c0c;
+	font-weight: 600;
+}
+
+:root[data-theme="light"] .genre-web-filter-chip {
+	background: hsl(var(--chip-hue) 55% 92%);
+	border-color: hsl(var(--chip-hue) 45% 75%);
+	color: hsl(var(--chip-hue) 45% 32%);
+}
+
+.genre-web-path-tray {
+	margin-top: 12px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	padding: 14px 16px;
+	background: var(--surface);
+}
+
+.genre-web-path-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	color: var(--text-dim);
+}
+
+.genre-web-path-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.genre-web-path-btn {
+	background: none;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 5px 14px;
+	font-size: 12px;
+	color: var(--text);
+	cursor: pointer;
+}
+
+.genre-web-path-btn:hover:not(:disabled) {
+	border-color: #d98c3a;
+	color: #d98c3a;
+}
+
+.genre-web-path-btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.genre-web-path-btn-primary {
+	background: #d98c3a;
+	border-color: #d98c3a;
+	color: #1a1208;
+	font-weight: 600;
+}
+
+.genre-web-path-btn-primary:hover:not(:disabled) {
+	color: #1a1208;
+	opacity: 0.88;
+}
+
+.genre-web-path-empty {
+	font-size: 13px;
+	color: var(--text-dim);
+	padding: 14px 0 4px;
+}
+
+.genre-web-path-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 10px;
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+.genre-web-path-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 5px 4px;
+	border-radius: 8px;
+}
+
+.genre-web-path-item:hover {
+	background: var(--surface-hover);
+}
+
+.genre-web-path-num {
+	flex-shrink: 0;
+	width: 16px;
+	font-size: 11px;
+	color: #d98c3a;
+	font-weight: 700;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.genre-web-path-name {
+	flex: 1;
+	min-width: 0;
+	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.genre-web-path-artist {
+	color: var(--text-dim);
+}
+
+.genre-web-path-remove {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	color: var(--text-dim);
+}
+
+.genre-web-path-remove:hover {
+	color: var(--text);
+}
+
 .genre-web-canvas {
 	position: relative;
 	width: 100%;
 	height: 560px;
+	min-width: 240px;
+	min-height: 200px;
+	max-width: 100%;
 	border-radius: 14px;
 	overflow: hidden;
 	border: 1px solid var(--border);
 	background: #000;
+	resize: both;
 }
 
 .genre-web-canvas canvas {
 	display: block;
+	width: 100%;
+	height: 100%;
 	cursor: grab;
 }
 

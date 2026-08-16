@@ -14,6 +14,7 @@ interface ExploreViewProps {
 	discover: Song[];
 	discoverLoading: boolean;
 	albums: Album[];
+	library: Song[];
 	likedPreview: Song[];
 	likedIds: Set<number>;
 	onToggleLike: (songId: number) => void;
@@ -24,6 +25,8 @@ interface ExploreViewProps {
 	onOpenArtist: (artist: string) => void;
 	onSeeLiked: () => void;
 	onBrowseLibrary: () => void;
+	onPlayPath: (songs: Song[]) => void;
+	onQueuePath: (songs: Song[]) => void;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -47,6 +50,7 @@ export function ExploreView({
 	discover,
 	discoverLoading,
 	albums,
+	library,
 	likedPreview,
 	likedIds,
 	onToggleLike,
@@ -57,6 +61,8 @@ export function ExploreView({
 	onOpenArtist,
 	onSeeLiked,
 	onBrowseLibrary,
+	onPlayPath,
+	onQueuePath,
 }: ExploreViewProps) {
 	const [showGenreWeb, setShowGenreWeb] = useState(false);
 	const openGenreWebAlbum = (a: GenreWebAlbum) => onOpenAlbum({ album: a.album, artist: a.artist, cover: a.cover, tracks: 0 });
@@ -96,7 +102,14 @@ export function ExploreView({
 						{showGenreWeb ? "Hide" : "Show"}
 					</button>
 				</div>
-				{showGenreWeb && <GenreWeb onOpenAlbum={openGenreWebAlbum} />}
+				{showGenreWeb && (
+					<GenreWeb
+						library={library}
+						onOpenAlbum={openGenreWebAlbum}
+						onPlayPath={onPlayPath}
+						onQueuePath={onQueuePath}
+					/>
+				)}
 			</div>
 			<Divider />
 

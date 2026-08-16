@@ -404,6 +404,7 @@ function App() {
 									discover={discover}
 									discoverLoading={discoverLoading}
 									albums={albums}
+									library={library}
 									likedPreview={likedSongs.slice(0, 10)}
 									likedIds={likedIds}
 									onToggleLike={toggleLike}
@@ -414,6 +415,8 @@ function App() {
 									onOpenArtist={openArtist}
 									onSeeLiked={openLikedSongs}
 									onBrowseLibrary={openLibrary}
+									onPlayPath={(songs) => player.playFromList(songs, 0)}
+									onQueuePath={(songs) => songs.forEach((s) => player.addToQueue(s))}
 								/>
 							)}
 
