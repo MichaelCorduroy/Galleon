@@ -1,8 +1,9 @@
-import { useMemo, type CSSProperties } from "react";
-import type { Album, ExploreData, Song } from "../api";
+import { useMemo, useState, type CSSProperties } from "react";
+import type { Album, ExploreData, GenreWebAlbum, Song } from "../api";
 import { coverUrl, downloadKey } from "../api";
 import { Carousel } from "./Carousel";
 import { CoverArt } from "./CoverArt";
+import { GenreWeb } from "./GenreWeb";
 import { LikeButton } from "./LikeButton";
 import { ShuffleIcon } from "../icons";
 import { formatListeningTime } from "../format";
@@ -57,6 +58,9 @@ export function ExploreView({
 	onSeeLiked,
 	onBrowseLibrary,
 }: ExploreViewProps) {
+	const [showGenreWeb, setShowGenreWeb] = useState(false);
+	const openGenreWebAlbum = (a: GenreWebAlbum) => onOpenAlbum({ album: a.album, artist: a.artist, cover: a.cover, tracks: 0 });
+
 	// stable-ish random sample + tilt for the crate-digging shelf — reshuffles
 	// only when the album list itself changes, not on every render
 	const crate = useMemo(() => {
@@ -84,6 +88,17 @@ export function ExploreView({
 					Shuffle my library
 				</button>
 			</div>
+
+			<div className="genre-web-section">
+				<div className="explore-shelf-header">
+					<div className="search-section-title">Genre web</div>
+					<button className="text-btn" onClick={() => setShowGenreWeb((v) => !v)}>
+						{showGenreWeb ? "Hide" : "Show"}
+					</button>
+				</div>
+				{showGenreWeb && <GenreWeb onOpenAlbum={openGenreWebAlbum} />}
+			</div>
+			<Divider />
 
 			{crate.length > 0 && (
 				<>

@@ -1,7 +1,7 @@
 import db from "./database";
 
 const BASE = "https://ws.audioscrobbler.com/2.0/";
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — similar-artist data barely shifts
+export const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — similar-artist/tag data barely shifts
 
 export interface SimilarArtist {
 	name: string;
@@ -52,5 +52,50 @@ export async function getSimilarArtists(artist: string): Promise<SimilarArtist[]
 		insertOne.run(artist, s.name, s.match, now);
 	}
 
+	return fresh;
+}
+
+const TOP_TAGS_LIMIT = 3;
+
+async function fetchTopTagsFromLastfm(artist: string): Promise<string[]> {
+	const apiKey = process.env.LASTFM_API_KEY;
+	if (!apiKey) return [];
+
+	const url = `${BASE}?method=artist.gettoptags&artist=${encodeURIComponent(artist)}&api_key=${apiKey}&format=json`;
+	const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+	if (!res.ok) throw new Error(`Last.fm request failed: ${res.status} ${res.statusText}`);
+
+	const data = await res.json();
+	if (data.error) return [];
+
+	const tags = data.toptags?.tag ?? [];
+	return tags
+		.slice(0, TOP_TAGS_LIMIT)
+		.map((t: any) => (t.name as string).toLowerCase())
+		.filter(Boolean);
+}
+
+const cachedGenres = db.prepare(`SELECT genres, fetched_at FROM artist_genres WHERE artist = ?`);
+const upsertGenres = db.prepare(`
+	INSERT INTO artist_genres (artist, genres, fetched_at) VALUES (?, ?, ?)
+	ON CONFLICT(artist) DO UPDATE SET genres = excluded.genres, fetched_at = excluded.fetched_at
+`);
+
+// top Last.fm tags for an artist, treated as genres — same lazy 30-day cache
+// pattern as getSimilarArtists, just a different Last.fm method
+export async function getTopTags(artist: string): Promise<string[]> {
+	const row = cachedGenres.get(artist) as { genres: string; fetched_at: number } | undefined;
+	if (row && Date.now() - row.fetched_at < CACHE_TTL_MS) {
+		return JSON.parse(row.genres);
+	}
+
+	let fresh: string[];
+	try {
+		fresh = await fetchTopTagsFromLastfm(artist);
+	} catch {
+		return row ? JSON.parse(row.genres) : [];
+	}
+
+	upsertGenres.run(artist, JSON.stringify(fresh), Date.now());
 	return fresh;
 }

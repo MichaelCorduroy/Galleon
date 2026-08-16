@@ -74,4 +74,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS liked_songs (
 	liked_at INTEGER NOT NULL
 )`);
 
+// Last.fm top tags per artist, treated as genres — feeds the 3D genre web.
+// Cached the same way as similar_artists since tag data barely shifts
+db.exec(`CREATE TABLE IF NOT EXISTS artist_genres (
+	artist TEXT PRIMARY KEY,
+	genres TEXT NOT NULL,
+	fetched_at INTEGER NOT NULL
+)`);
+
 export default db;

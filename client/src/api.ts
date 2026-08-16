@@ -233,3 +233,23 @@ export async function fetchDiscover(limit = 12): Promise<Song[]> {
 	if (!res.ok) return [];
 	return res.json();
 }
+
+export interface GenreWebAlbum {
+	album: string;
+	artist: string;
+	cover: string | null;
+	genres: string[];
+}
+
+export interface GenreWebData {
+	albums: GenreWebAlbum[];
+	genres: string[];
+}
+
+// can be slow on a cold cache (warms Last.fm genre tags for every artist the
+// first time) — fast on every request after that
+export async function fetchGenreWeb(): Promise<GenreWebData | null> {
+	const res = await fetch(`${API_BASE}/genre-web`);
+	if (!res.ok) return null;
+	return res.json();
+}

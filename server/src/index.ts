@@ -17,6 +17,7 @@ import {
 } from "./history";
 import { likeSong, listLikedSongs, unlikeSong } from "./liked";
 import { getDiscoverPlaylist } from "./discover";
+import { getGenreWebData } from "./genreweb";
 
 const MIME_TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
@@ -270,6 +271,19 @@ app.get("/discover", async (request, reply) => {
 	} catch (err) {
 		app.log.error(err);
 		return reply.code(502).send({ error: "Failed to build discover playlist" });
+	}
+});
+
+// data for the 3D genre web on the explore page — every owned album tagged
+// with its artist's Last.fm genres. Can be slow on a cold cache (first load
+// after a big library scan) since it warms artist_genres for every distinct
+// artist; fast on every request after that
+app.get("/genre-web", async (request, reply) => {
+	try {
+		return await getGenreWebData();
+	} catch (err) {
+		app.log.error(err);
+		return reply.code(502).send({ error: "Failed to build genre web" });
 	}
 });
 
