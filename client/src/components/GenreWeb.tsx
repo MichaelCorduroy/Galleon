@@ -3,8 +3,14 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { coverUrl, fetchGenreWeb, type GenreWebAlbum, type Song } from "../api";
 import { buildGenreWebLayout, genreHue, ORB_RADIUS, type PlacedAlbum } from "../genreWebLayout";
+import { Carousel } from "./Carousel";
 import { CoverArt } from "./CoverArt";
 import { CloseIcon, SearchIcon } from "../icons";
+
+interface GenreStat {
+	genre: string;
+	count: number;
+}
 
 interface GenreWebProps {
 	library: Song[];
@@ -24,6 +30,11 @@ const PATH_COLOR = 0xd98c3a;
 const BUILD_BATCH_SIZE = 60;
 const TEXTURE_LOADS_PER_PASS = 24;
 const TEXTURE_CHECK_INTERVAL_MS = 350;
+
+// with a real library, dozens of Last.fm tags show up — only pin the
+// biggest ones by default, everything else is reachable via the genre search
+const DEFAULT_PINNED_GENRES = 8;
+const GENRE_SUGGESTION_LIMIT = 8;
 
 const albumKey = (a: { artist: string; album: string }) => `${a.artist}::${a.album}`;
 
@@ -47,19 +58,20 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 	const tooltipRef = useRef<HTMLDivElement>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
-	const [query, setQuery] = useState("");
-	const [bgMode, setBgMode] = useState<"black" | "white">("black");
+	const [search, setSearch] = useState("");
+	const [bgMode, setBgMode] = useState<"black" | "white">("white");
 	const [albumCount, setAlbumCount] = useState(0);
 	const [pathMode, setPathMode] = useState(false);
 	const [path, setPath] = useState<PlacedAlbum[]>([]);
-	const [genreList, setGenreList] = useState<string[]>([]);
+	const [genreStats, setGenreStats] = useState<GenreStat[]>([]);
+	const [pinnedGenres, setPinnedGenres] = useState<string[]>([]);
 	const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
 	const [showAuras, setShowAuras] = useState(false);
 
 	// mutable handles the render loop needs, kept out of React state so
 	// updating them (search filter, bg toggle, etc.) never triggers a re-mount
 	const queryRef = useRef("");
-	const bgModeRef = useRef<"black" | "white">("black");
+	const bgModeRef = useRef<"black" | "white">("white");
 	const pathModeRef = useRef(false);
 	const pathRef = useRef<PlacedAlbum[]>([]);
 	const selectedGenresRef = useRef<Set<string>>(new Set());
@@ -77,8 +89,8 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 	togglePathAlbumRef.current = togglePathAlbum;
 
 	useEffect(() => {
-		queryRef.current = query;
-	}, [query]);
+		queryRef.current = search;
+	}, [search]);
 
 	useEffect(() => {
 		bgModeRef.current = bgMode;
@@ -204,7 +216,16 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 
 			const layout = buildGenreWebLayout(data.genres, data.albums);
 			setAlbumCount(layout.albums.length);
-			setGenreList(data.genres);
+
+			const counts = new Map<string, number>();
+			for (const album of data.albums) {
+				for (const g of album.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
+			}
+			const stats = Array.from(counts.entries())
+				.map(([genre, count]) => ({ genre, count }))
+				.sort((a, b) => b.count - a.count);
+			setGenreStats(stats);
+			setPinnedGenres(stats.slice(0, DEFAULT_PINNED_GENRES).map((s) => s.genre));
 
 			for (const hub of layout.hubs) {
 				const geo = new THREE.SphereGeometry(0.35, 10, 10);
@@ -225,6 +246,7 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 				const sprite = new THREE.Sprite(auraMat);
 				sprite.position.set(hub.position.x, hub.position.y, hub.position.z);
 				sprite.scale.set(26, 26, 1);
+				sprite.userData.genre = hub.genre;
 				auraGroup.add(sprite);
 			}
 
@@ -376,7 +398,16 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 				appliedBgMode = bgModeRef.current;
 				applyBackground(appliedBgMode);
 			}
-			auraGroup.visible = showAurasRef.current;
+
+			const genreFilter = selectedGenresRef.current;
+			// showing every genre's region at once is just noise — only light up
+			// the ones actually being filtered on right now
+			auraGroup.visible = showAurasRef.current && genreFilter.size > 0;
+			if (auraGroup.visible) {
+				for (const sprite of auraGroup.children) {
+					sprite.visible = genreFilter.has(sprite.userData.genre as string);
+				}
+			}
 
 			maybeLoadVisibleTextures(performance.now());
 
@@ -397,7 +428,6 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 			}
 
 			const q = queryRef.current.trim().toLowerCase();
-			const genreFilter = selectedGenresRef.current;
 			for (const mesh of orbMeshes) {
 				const album = mesh.userData.album as PlacedAlbum;
 				const visible = isHighlighted(album, q, genreFilter);
@@ -502,6 +532,21 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 		});
 	};
 
+	// picking a genre suggestion pins it into the visible row (if it wasn't
+	// already) and turns it on as a filter in one action — that's the whole
+	// point of searching for it. The typed text stays in the box, since it's
+	// also driving the plain album/artist text match at the same time
+	const addGenre = (genre: string) => {
+		setPinnedGenres((prev) => (prev.includes(genre) ? prev : [...prev, genre]));
+		setSelectedGenres((prev) => new Set(prev).add(genre));
+	};
+
+	const genreSuggestions = search.trim()
+		? genreStats
+				.filter((s) => s.genre.includes(search.trim().toLowerCase()) && !pinnedGenres.includes(s.genre))
+				.slice(0, GENRE_SUGGESTION_LIMIT)
+		: [];
+
 	return (
 		<div className="genre-web">
 			<div className="genre-web-controls">
@@ -509,10 +554,20 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 					<SearchIcon size={13} />
 					<input
 						type="text"
-						placeholder="Find an album or artist in the web…"
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
+						placeholder="Find an artist, album, or genre…"
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
 					/>
+					{genreSuggestions.length > 0 && (
+						<div className="genre-web-genre-suggestions">
+							{genreSuggestions.map((s) => (
+								<button key={s.genre} onClick={() => addGenre(s.genre)}>
+									{s.genre}
+									<span className="genre-web-genre-count">{s.count}</span>
+								</button>
+							))}
+						</div>
+					)}
 				</div>
 				<button
 					className={`genre-web-path-toggle ${pathMode ? "active" : ""}`}
@@ -532,12 +587,18 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 				>
 					{bgMode === "black" ? "White background" : "Black background"}
 				</button>
+				{selectedGenres.size > 0 && (
+					<button className="text-btn" onClick={() => setSelectedGenres(new Set())}>
+						Clear filters
+					</button>
+				)}
 			</div>
 
-			{genreList.length > 0 && (
-				<div className="genre-web-filter-row">
-					{genreList.map((g) => {
+			{pinnedGenres.length > 0 && (
+				<Carousel trackClassName="genre-web-filter-row">
+					{pinnedGenres.map((g) => {
 						const active = selectedGenres.has(g);
+						const stat = genreStats.find((s) => s.genre === g);
 						return (
 							<button
 								key={g}
@@ -546,15 +607,11 @@ export function GenreWeb({ library, onOpenAlbum, onPlayPath, onQueuePath }: Genr
 								onClick={() => toggleGenreFilter(g)}
 							>
 								{g}
+								{stat && <span className="genre-web-genre-count">{stat.count}</span>}
 							</button>
 						);
 					})}
-					{selectedGenres.size > 0 && (
-						<button className="text-btn" onClick={() => setSelectedGenres(new Set())}>
-							Clear filters
-						</button>
-					)}
-				</div>
+				</Carousel>
 			)}
 
 			<div className="genre-web-canvas" ref={containerRef}>

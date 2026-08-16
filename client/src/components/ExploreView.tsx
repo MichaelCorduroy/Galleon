@@ -64,7 +64,7 @@ export function ExploreView({
 	onPlayPath,
 	onQueuePath,
 }: ExploreViewProps) {
-	const [showGenreWeb, setShowGenreWeb] = useState(false);
+	const [showGenreWeb, setShowGenreWeb] = useState(true);
 	const openGenreWebAlbum = (a: GenreWebAlbum) => onOpenAlbum({ album: a.album, artist: a.artist, cover: a.cover, tracks: 0 });
 
 	// stable-ish random sample + tilt for the crate-digging shelf — reshuffles

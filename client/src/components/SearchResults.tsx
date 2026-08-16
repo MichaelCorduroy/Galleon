@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Album, MissingTrack, Song } from "../api";
+import type { Album, GenreWebAlbum, MissingTrack, Song } from "../api";
 import { coverUrl, downloadKey, searchMissingTracks } from "../api";
 import type { ArtistSummary } from "../artists";
 import { CoverArt } from "./CoverArt";
@@ -13,6 +13,7 @@ interface SearchResultsProps {
 	library: Song[];
 	albums: Album[];
 	artists: ArtistSummary[];
+	genreAlbums: GenreWebAlbum[];
 	onClear: () => void;
 	onPlaySong: (list: Song[], index: number) => void;
 	onAddToQueue: (song: Song) => void;
@@ -29,6 +30,7 @@ export function SearchResults({
 	library,
 	albums,
 	artists,
+	genreAlbums,
 	onClear,
 	onPlaySong,
 	onAddToQueue,
@@ -54,6 +56,23 @@ export function SearchResults({
 	);
 	const matchingArtists = useMemo(() => artists.filter((a) => a.artist.toLowerCase().includes(q)), [artists, q]);
 
+	// groups owned albums by whichever of their Last.fm genre tags matched —
+	// e.g. typing "electro" surfaces a "Genre: electronic" shelf of albums
+	// carrying that tag, even if the album/artist name itself doesn't match
+	const genreMatches = useMemo(() => {
+		if (!q) return [];
+		const byGenre = new Map<string, GenreWebAlbum[]>();
+		for (const album of genreAlbums) {
+			for (const g of album.genres) {
+				if (!g.toLowerCase().includes(q)) continue;
+				const list = byGenre.get(g);
+				if (list) list.push(album);
+				else byGenre.set(g, [album]);
+			}
+		}
+		return Array.from(byGenre.entries());
+	}, [genreAlbums, q]);
+
 	// tracks we know about (from previously-viewed MusicBrainz tracklists)
 	// but don't have a file for — debounced since it's a network round trip
 	const [missingTracks, setMissingTracks] = useState<MissingTrack[]>([]);
@@ -77,7 +96,11 @@ export function SearchResults({
 	}, [q]);
 
 	const hasResults =
-		matchingSongs.length > 0 || matchingAlbums.length > 0 || matchingArtists.length > 0 || missingTracks.length > 0;
+		matchingSongs.length > 0 ||
+		matchingAlbums.length > 0 ||
+		matchingArtists.length > 0 ||
+		missingTracks.length > 0 ||
+		genreMatches.length > 0;
 
 	return (
 		<div className="content-view">
@@ -127,6 +150,30 @@ export function SearchResults({
 					</div>
 				</div>
 			)}
+
+			{genreMatches.map(([genre, matchedAlbums]) => (
+				<div key={genre} className="search-section">
+					<div className="search-section-title">Genre: {genre}</div>
+					<div className="album-grid">
+						{matchedAlbums.map((album) => (
+							<button
+								key={`${album.artist}::${album.album}`}
+								className="album-card"
+								onClick={() => onOpenAlbum({ album: album.album, artist: album.artist, cover: album.cover, tracks: 0 })}
+							>
+								<CoverArt
+									src={coverUrl(album.cover)}
+									alt={`${album.album} cover`}
+									className="cover-art-album"
+									iconSize={24}
+								/>
+								<span className="album-card-title">{album.album}</span>
+								<span className="album-card-meta">{album.artist}</span>
+							</button>
+						))}
+					</div>
+				</div>
+			))}
 
 			{matchingSongs.length > 0 && (
 				<div className="search-section">

@@ -5,6 +5,7 @@ import {
 	fetchAlbums,
 	fetchDiscover,
 	fetchExplore,
+	fetchGenreWeb,
 	fetchLikedSongs,
 	fetchSongs,
 	fetchTracklist,
@@ -14,6 +15,7 @@ import {
 	withRetry,
 	type Album,
 	type ExploreData,
+	type GenreWebData,
 	type LikedSong,
 	type Song,
 	type Tracklist,
@@ -66,6 +68,7 @@ function App() {
 	const [discoverLoading, setDiscoverLoading] = useState(true);
 	const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
 	const likedIds = useMemo(() => new Set(likedSongs.map((s) => s.id)), [likedSongs]);
+	const [genreWebData, setGenreWebData] = useState<GenreWebData | null>(null);
 
 	useEffect(() => {
 		withRetry(fetchSongs).then(setLibrary).catch(() => {});
@@ -77,6 +80,7 @@ function App() {
 			.then(setDiscover)
 			.finally(() => setDiscoverLoading(false));
 		fetchLikedSongs().then(setLikedSongs);
+		fetchGenreWeb().then(setGenreWebData).catch(() => {});
 	}, []);
 
 	const artists = useMemo(() => deriveArtists(albums), [albums]);
@@ -333,6 +337,7 @@ function App() {
 									library={library}
 									albums={albums}
 									artists={artists}
+									genreAlbums={genreWebData?.albums ?? []}
 									onClear={() => setQuery("")}
 									onPlaySong={(list, i) => player.playFromList(list, i)}
 									onAddToQueue={player.addToQueue}
